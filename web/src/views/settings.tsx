@@ -151,8 +151,9 @@ export function SettingsView() {
         <CardHeader>
           <CardTitle>mihomo（Clash）下发模板</CardTitle>
           <CardDescription>
-            订阅输出的完整配置骨架。占位符：<code>{'{{PROXIES}}'}</code> = 节点列表，<code>{'{{PROXY_NAMES}}'}</code> =
-            节点名列表（已加引号）。模板必须包含 <code>{'{{PROXIES}}'}</code>。
+            普通 YAML 配置（Xboard 同款语义，无需占位符）。渲染时自动：节点合并进 <code>proxies</code>、
+            节点名追加进各策略组；策略组里写 <code>/正则/</code> 条目可只放进匹配的节点（如{' '}
+            <code>/香港|HK/</code>）；注入后为空的策略组自动移除。
           </CardDescription>
         </CardHeader>
         <CardContent>

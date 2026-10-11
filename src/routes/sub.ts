@@ -52,7 +52,10 @@ async function serveSub(c: any, token: string): Promise<Response> {
   const nodes = await buildRenderNodes(servers, user);
   const format = detectFormat(c.req.header('User-Agent') ?? '', c.req.query('flag'));
   const clashTemplate = format === 'clash' ? await getSetting(c.env.DB, 'clash_template', DEFAULT_CLASH_TEMPLATE) : '';
-  const body = render(format, nodes, { clashTemplate });
+  const body = render(format, nodes, {
+    clashTemplate,
+    panelHost: (c.req.header('Host') ?? '').split(':')[0],
+  });
 
   return c.body(body, 200, {
     'Content-Type': contentTypeFor(format),

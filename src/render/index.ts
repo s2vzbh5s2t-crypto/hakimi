@@ -8,6 +8,8 @@ export type RenderFormat = 'clash' | 'singbox' | 'uri' | 'uri-b64';
 export type RenderOptions = {
   /** mihomo 下发模板（settings.clash_template） */
   clashTemplate?: string;
+  /** 订阅请求的域名（注入 DOMAIN 直连规则用） */
+  panelHost?: string;
 };
 
 /** UA → 格式识别（对齐 Xboard app/Protocols 的 flag 族，覆盖面从简） */
@@ -40,7 +42,7 @@ export function contentTypeFor(format: RenderFormat): string {
 export function render(format: RenderFormat, nodes: RenderNode[], opts: RenderOptions = {}): string {
   switch (format) {
     case 'clash':
-      return renderClash(nodes, opts.clashTemplate || DEFAULT_CLASH_TEMPLATE);
+      return renderClash(nodes, opts.clashTemplate || DEFAULT_CLASH_TEMPLATE, opts.panelHost || '');
     case 'singbox':
       return renderSingBox(nodes);
     case 'uri':

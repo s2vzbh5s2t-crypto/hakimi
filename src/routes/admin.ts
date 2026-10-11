@@ -15,6 +15,7 @@ import {
 } from '../db';
 import { hashPassword, newUuidV4, randomHex, sha256Hex, verifyPassword } from '../util';
 import { DEFAULT_CLASH_TEMPLATE } from '../render/clash';
+import { parse as parseYaml } from 'yaml';
 
 export const adminApi = new Hono<AppEnv>();
 
@@ -254,8 +255,12 @@ adminApi.put('/api/admin/settings', adminAuth, async (c) => {
   if (body.push_interval) await setSetting(c.env.DB, 'push_interval', String(Math.max(30, Number(body.push_interval) || 60)));
   if (body.pull_interval) await setSetting(c.env.DB, 'pull_interval', String(Math.max(30, Number(body.pull_interval) || 60)));
   if (typeof body.clash_template === 'string') {
-    if (!body.clash_template.includes('{{PROXIES}}')) {
-      return c.json({ message: '模板必须包含 {{PROXIES}} 占位符' }, 422);
+    // Xboard 注入语义：模板是普通 YAML，渲染时自动注入节点；这里只校验 YAML 合法性
+    try {
+      const parsed = parseYaml(body.clash_template);
+      if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) throw new Error('not a mapping');
+    } catch {
+      return c.json({ message: '模板不是合法的 YAML 配置' }, 422);
     }
     await setSetting(c.env.DB, 'clash_template', body.clash_template);
   }

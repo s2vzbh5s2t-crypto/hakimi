@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit && npm run typecheck --prefix web"
   },
   "dependencies": {
-    "hono": "^4.6.0"
+    "hono": "^4.6.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261006.1",

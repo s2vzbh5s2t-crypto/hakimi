@@ -104,8 +104,9 @@ GET /s/{token}?flag=clash|sing-box|shadowrocket|general   # 强制输出格式
 默认按客户端 UA 自动识别：Clash 系 → Clash YAML，sing-box → JSON，Shadowrocket/Surge 等 → URI 列表，未识别 → base64。
 订阅链接可随时在面板**轮换**（旧链接立即失效）。
 
-mihomo（Clash）的下发配置骨架可在**设置 → mihomo 下发模板**里自定义（端口/策略组/分流规则随意改），
-用 `{{PROXIES}}` 占位节点列表、`{{PROXY_NAMES}}` 占位节点名列表；模板必须包含 `{{PROXIES}}`。
+mihomo（Clash）的下发配置可在**设置 → mihomo 下发模板**里自定义，模板就是普通 YAML（Xboard 同款语义）：
+渲染时节点自动合并进 `proxies`、节点名自动追加进各策略组；策略组里写 `/正则/` 条目可只放进名称匹配的节点
+（如 `/香港|HK/`），无匹配的组自动移除；规则最前会注入订阅域名直连（防更新订阅走代理成环）。
 
 ---
 
