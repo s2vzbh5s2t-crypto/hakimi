@@ -27,25 +27,52 @@
 4. **给构建换一个带 D1 权限的 API token**（见下方详解，一次性设置）
 5. **Save and Deploy** → 完成。之后每次 `git push` 自动部署
 
-#### 第 4 步详解：为什么要换 API token？
+#### 第 4 步详解：自建 API Token 教程（一次性，约 3 分钟）
 
-Cloudflare 执行你的构建时，构建过程自己也要「登录」你的账号才能建资源、传 Worker，
+**为什么需要？** Cloudflare 执行你的构建时，构建过程自己也要「登录」你的账号才能建资源、传 Worker，
 这个凭证就是 API token。默认情况下 Cloudflare 会**自动生成**一个，但它的权限是写死的：
 
 > Workers Scripts（编辑）、Workers KV（编辑）、Workers R2（编辑）、Workers Routes（编辑）
 
-**里面没有 D1** —— 而 `deploy:ci` 第一步就是建 D1 库和表，撞上默认 token 会报权限错误。
-所以要自己建一个带 D1 权限的 token 给构建用（一次性，约 3 分钟）：
+**里面没有 D1** —— 而 `deploy:ci` 第一步就是建 D1 库和表，撞上默认 token 会报 403 权限错误。
+所以要自己建一个带 D1 权限的 token 给构建用。
 
-1. 打开 [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom Token**
-2. Permissions 添加两条：
-   - `Account` / `Workers Scripts` / `Edit`
-   - `Account` / `D1` / `Edit`
-3. Account Resources → `Include` → 你的账户 → **Continue to summary → Create Token** → **立刻复制**（只显示一次）
-4. 回到 Workers & Pages → `hakimi` → **Settings → Builds** → **API token** → 选中你刚创建的 token → 保存
+**创建 token**
+
+1. 打开 [API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+   （或 Cloudflare 控制台右上角头像 → **My Profile** → **API Tokens**）
+2. 点 **Create Token** → 在模板列表往下找 **Custom Token** → **Get started**
+   （不要用 "Edit Cloudflare Workers" 模板，它不含 D1 权限）
+3. 起个名字，比如 `hakimi-build`
+4. 在 **Permissions** 区域点 `+ Add more`，逐条添加下面两条（每条选三格：资源 / 权限 / 级别）：
+
+   | # | Resource（资源） | Permission（权限） | Access（级别） |
+   |---|---|---|---|
+   | 1 | `Account` | `Workers Scripts` | `Edit` |
+   | 2 | `Account` | `D1` | `Edit` |
+
+5. **Account Resources** → 选 `Include` → `All accounts`（或只选你的账户）；
+   **Zone Resources** 不需要，留空即可
+6. 页面底部 → **Continue to summary** → 核对上面两条权限 → **Create Token**
+   → **点 Copy token 并立刻保存**（只显示这一次，丢了只能删掉重建）
+
+**挂到构建上**
+
+7. 回到 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → `hakimi`
+   → **Settings** → **Builds**（或 Build）→ 找到 **API token** 设置项
+8. 从默认（Automatically generated）切换为**你刚创建的 token**（按名字 `hakimi-build` 找）
+   → 保存；然后 **Retry** 重跑构建（或 Save and Deploy）
+
+**常见问题**
+
+| 情况 | 处理 |
+|---|---|
+| token 复制丢了 / 怀疑泄露 | [API Tokens](https://dash.cloudflare.com/profile/api-tokens) 里把旧的 Delete，重新创建并挂载（第 7~8 步） |
+| 构建仍报 403 | 回 API Tokens 页点进 token 核对权限：必须是两条、级别是 **Edit** 不是 Read |
+| 不想再用 | API Tokens 页 Delete 即可，构建会立即失效 |
 
 > 这个 token 是给 Cloudflare **构建环境**用的账号凭证，与面板里的「通信密钥」
->（server_token，给节点后端用的）完全是两回事。随时可在 API Tokens 页吊销或改权限。
+>（server_token，给节点后端用的）完全是两回事。
 
 > 没有自己的域名也能用 `https://hakimi.<你的子域>.workers.dev`；
 > 有 Cloudflare zone 的话在 Workers 设置里绑自定义域即可。
