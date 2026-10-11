@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy:ci": "node scripts/prepare-d1.mjs && wrangler deploy",
+    "dev:web": "npm run dev --prefix web",
+    "build": "npm ci --prefix web && npm run build --prefix web",
+    "deploy:ci": "node scripts/prepare-d1.mjs && npm run build && wrangler deploy",
     "migrate:local": "wrangler d1 migrations apply hakimi --local",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && npm run typecheck --prefix web"
   },
   "dependencies": {
     "hono": "^4.6.0"
@@ -16,9 +18,5 @@
     "@cloudflare/workers-types": "^5.20261006.1",
     "typescript": "^5.6.0",
     "wrangler": "^4.0.0"
-  },
-  "allowScripts": {
-    "esbuild@0.28.2": true,
-    "workerd@1.20261006.1": true
   }
 }

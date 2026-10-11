@@ -1,122 +1,13 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hakimi · 节点管理面板</title>
-  <link rel="stylesheet" href="./style.css">
-</head>
-<body>
-  <div id="auth-view" class="center-card hidden">
-    <h1>Hakimi</h1>
-    <p class="muted">单人节点中枢</p>
-    <form id="setup-form" class="hidden">
-      <h2>初始化</h2>
-      <input type="password" id="setup-password" placeholder="设置管理密码（至少 8 位）" required>
-      <input type="password" id="setup-password2" placeholder="确认密码" required>
-      <button type="submit" class="primary">创建</button>
-    </form>
-    <form id="login-form" class="hidden">
-      <h2>登录</h2>
-      <input type="password" id="login-password" placeholder="管理密码" required>
-      <button type="submit" class="primary">登录</button>
-    </form>
-    <p id="auth-error" class="error"></p>
-  </div>
-
-  <div id="main-view" class="hidden">
-    <header>
-      <div class="brand">Hakimi <span class="muted">· 节点中枢</span></div>
-      <nav>
-        <button data-tab="servers" class="tab active">节点</button>
-        <button data-tab="users" class="tab">用户凭据</button>
-        <button data-tab="subs" class="tab">订阅</button>
-        <button data-tab="settings" class="tab">设置</button>
-      </nav>
-      <button id="logout" class="ghost">退出</button>
-    </header>
-
-    <main>
-      <!-- 节点 -->
-      <section id="tab-servers">
-        <div class="toolbar">
-          <h2>节点</h2>
-          <button id="server-new" class="primary">＋ 新建节点</button>
-        </div>
-        <table id="server-table">
-          <thead><tr><th>ID</th><th>Code</th><th>名称</th><th>类型</th><th>地址</th><th>端口</th><th>服务端口</th><th>启用</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <!-- 用户 -->
-      <section id="tab-users" class="hidden">
-        <div class="toolbar">
-          <h2>用户凭据</h2>
-          <button id="user-new" class="primary">＋ 新建凭据</button>
-        </div>
-        <p class="muted">一份凭据 = 一个 UUID，trojan/SS 密码均由它派生。按订阅或设备分开创建，丢失单独作废。</p>
-        <table id="user-table">
-          <thead><tr><th>ID</th><th>备注</th><th>UUID</th><th>启用</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <!-- 订阅 -->
-      <section id="tab-subs" class="hidden">
-        <div class="toolbar">
-          <h2>订阅</h2>
-          <button id="sub-new" class="primary">＋ 新建订阅</button>
-        </div>
-        <table id="sub-table">
-          <thead><tr><th>ID</th><th>名称</th><th>凭据</th><th>订阅链接</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <!-- 设置 -->
-      <section id="tab-settings" class="hidden">
-        <h2>设置</h2>
-        <div class="card">
-          <h3>通信密钥（后端 ApiKey）</h3>
-          <div class="row"><code id="server-token">…</code>
-            <button id="token-copy" class="ghost">复制</button>
-            <button id="token-rotate" class="danger">轮换</button>
-          </div>
-          <p class="muted">轮换后所有节点后端需同步更新配置。</p>
-        </div>
-        <div class="card">
-          <h3>订阅路径</h3>
-          <div class="row"><span class="muted">/</span><input id="subscribe-path" placeholder="s"><span class="muted">/{token}</span>
-            <button id="settings-save" class="primary">保存</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>后端轮询节奏（下发 base_config）</h3>
-          <div class="row">
-            <label>pull_interval <input id="pull-interval" type="number" min="30"></label>
-            <label>push_interval <input id="push-interval" type="number" min="30"></label>
-            <button id="interval-save" class="primary">保存</button>
-          </div>
-          <p class="muted">秒。调大可降低 Cloudflare 免费档请求消耗（见 PLAN.md §8）。</p>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- 弹窗 -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-body">
-      <h3 id="modal-title"></h3>
-      <div id="modal-content"></div>
-      <div class="row right">
-        <button id="modal-cancel" class="ghost">取消</button>
-        <button id="modal-save" class="primary">保存</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="toast" class="toast hidden"></div>
-  <script src="./app.js"></script>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vite-app</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

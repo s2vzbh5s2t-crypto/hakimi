@@ -43,7 +43,9 @@ async function adminAuth(c: any, next: () => Promise<void>) {
 
 adminApi.get('/api/admin/me', async (c) => {
   const configured = !!(await getSetting(c.env.DB, 'password_hash'));
-  return c.json({ data: { configured, authed: false } });
+  const token = getCookie(c, 'session') ?? '';
+  const authed = token ? await validSession(c.env.DB, await sha256Hex(token)) : false;
+  return c.json({ data: { configured, authed } });
 });
 
 // 首次初始化：设置管理密码 + 生成通信密钥

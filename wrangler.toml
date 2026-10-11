@@ -2,9 +2,9 @@ name = "hakimi"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
 
-# 前端静态资源（构建产物直接放 web/，无需打包）
+# 前端构建产物（web/ 是 React + shadcn/ui 项目，先 npm run build）
 [assets]
-directory = "./web"
+directory = "./web/dist"
 
 # D1 数据库：先执行 `wrangler d1 create hakimi`，把返回的 database_id 填到这里
 [[d1_databases]]

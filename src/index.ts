@@ -15,7 +15,13 @@ app.onError((err, c) => {
   return c.json({ message: String(err.message ?? err) }, 500);
 });
 
-// 其余请求交给静态资源（web/）
-app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw));
+// 其余请求交给构建产物（web/dist）
+app.all('*', async (c) => {
+  try {
+    return await c.env.ASSETS.fetch(c.req.raw);
+  } catch {
+    return c.text('Not Found', 404);
+  }
+});
 
 export default app;

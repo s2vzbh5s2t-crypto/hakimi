@@ -15,9 +15,9 @@
 ## 快速开始（部署）
 
 **唯一部署方式：Cloudflare 连接 GitHub 仓库自动部署**（Workers Builds）。
-项目零构建（前端是静态文件）、零应用级密钥（密码/密钥都存在 D1 里）——
+零应用级密钥（密码/密钥都存在 D1 里）——
 仓库里的 `npm run deploy:ci` 会在构建中自动完成
-「查找/创建 D1 → 写入 database_id → 建表 → 部署」，本地不需要装任何环境。
+「前端构建（React + shadcn/ui）→ 查找/创建 D1 → 写入 database_id → 建表 → 部署」，本地不需要装任何环境。
 
 1. 打开 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → **Create application** → **Import a repository** → 授权 GitHub 并选中本仓库
 2. **Worker 名字必须填 `hakimi`**
@@ -158,10 +158,12 @@ v2board:
 ## 开发
 
 ```bash
-npm run dev            # 本地开发（wrangler dev）
-npm run typecheck      # TypeScript 检查
+npm run dev            # 后端本地调试（wrangler dev，需先 npm run build 产出 web/dist）
+npm run dev:web        # 前端本地调试（Vite，API 自动代理到 8787）
+npm run build          # 构建前端（tsc 类型检查 + vite 打包到 web/dist）
+npm run typecheck      # TypeScript 检查（后端 + 前端）
 npm run migrate:local  # 本地 D1 建表
-npm run deploy:ci      # 部署全流程（Cloudflare 构建运行的就是它）：D1 准备 + 迁移 + 部署
+npm run deploy:ci      # 部署全流程（Cloudflare 构建运行的就是它）：D1 准备 + 建表 + 构建 + 部署
 ```
 
 ```
@@ -173,7 +175,10 @@ npm run deploy:ci      # 部署全流程（Cloudflare 构建运行的就是它�
 │   ├── services/            # buildNodeConfig / 密码派生（照抄 Xboard 语义）
 │   ├── render/              # Clash / sing-box / URI 渲染器 + UA 识别
 │   └── db.ts · util.ts      # D1 访问 / PBKDF2 / ETag
-└── web/                     # 管理面板（零构建静态 SPA）
+└── web/                     # 管理面板（React 19 + Vite + shadcn/ui + Tailwind v4）
+    ├── src/components/ui/  #   shadcn/ui 组件（radix 基座，Geist 字体，暗色主题）
+    ├── src/views/          #   节点 / 用户凭据 / 订阅 / 设置
+    └── dist/               #   构建产物（Workers Static Assets 托管，不入库）
 ```
 
 ---
