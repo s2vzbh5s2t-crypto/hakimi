@@ -1,94 +1,133 @@
-# Hakimi · 单人节点中枢
+<div align="center">
 
-托管在 **Cloudflare Workers + D1** 的节点管理面板——服务器成本 **$0**（免费档即可跑 30+ 节点），没有面板服务器要维护。
+# Hakimi
 
-它只做三件事：
+**单人节点中枢** · 管理节点配置、给后端下发、给客户端订阅
 
-1. **管理节点配置** —— vless / vmess / trojan / shadowsocks / hysteria2 / tuic，含 Reality、XTLS-Vision、WS / gRPC / H2 传输层
-2. **给节点后端拉取** —— soga / XrayR / V2bX / hysteria-v2board 等现成后端通过 **Xboard 兼容 API** 拉配置运行，填 `apiHost + api_key + nodeID` 即对接
-3. **给客户端订阅** —— `/s/{token}` 输出 Clash / sing-box / 通用 URI，按 UA 自动识别格式，导入 Clash、sing-box、Shadowrocket 等直接使用
+一个托管在 **Cloudflare Workers + D1** 上的节点管理面板——服务器成本 **$0**，push 即部署。
 
-设计与完整契约见 [`PLAN.md`](./PLAN.md)。
+</div>
 
 ---
 
-## 快速开始（部署）
+## 这是什么
 
-**唯一部署方式：Cloudflare 连接 GitHub 仓库自动部署**（Workers Builds）。
-零应用级密钥（密码/密钥都存在 D1 里）——
-仓库里的 `npm run deploy:ci` 会在构建中自动完成
-「前端构建（React + shadcn/ui）→ 查找/创建 D1 → 写入 database_id → 建表 → 部署」，本地不需要装任何环境。
+Hakimi 是一个轻量级节点管理面板，充当你的**代理节点中枢（Control Plane）**：
 
-1. 打开 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → **Create application** → **Import a repository** → 授权 GitHub 并选中本仓库
-2. **Worker 名字必须填 `hakimi`**
-   （要与 `wrangler.toml` 的 `name` 一致，否则构建直接失败）
-3. **Deploy command 填 `npm run deploy:ci`**
-   （不要用默认的 `npx wrangler deploy`，否则 `database_id` 占位符会让部署失败）
-4. **给构建换一个带 D1 权限的 API token**（见下方详解，一次性设置）
-5. **Save and Deploy** → 完成。之后每次 `git push` 自动部署
+```
+                    ┌─────────────────────────────┐
+                    │        Hakimi（中枢）         │
+                    │   Cloudflare Workers + D1    │
+                    │  节点配置 · 用户凭据 · 订阅     │
+                    └──────┬──────────────┬────────┘
+           订阅链接          │              │  后端 API（Xboard 兼容）
+                            │              │
+            ┌───────────────┴──┐    ┌──────┴──────────────────┐
+            │  你（浏览器/客户端）│    │  节点 × N（VPS/家里机器）  │
+            │  Clash / sing-box │    │  soga · XrayR · V2bX     │
+            │  / Shadowrocket   │    │  （填 ApiHost+ApiKey 即可）│
+            └──────────────────┘    └─────────────────────────┘
+```
 
-#### 第 4 步详解：自建 API Token 教程（一次性，约 3 分钟）
+它做三件事：
 
-**为什么需要？** Cloudflare 执行你的构建时，构建过程自己也要「登录」你的账号才能建资源、传 Worker，
-这个凭证就是 API token。默认情况下 Cloudflare 会**自动生成**一个，但它的权限是写死的：
+1. **管理节点配置** — 增删改、分组、按协议表单化配置
+2. **给后端拉取** — soga / XrayR / V2bX / hysteria-v2board 等现成后端通过 **Xboard 兼容 API** 拉配置运行
+3. **给客户端订阅** — `/s/{token}` 输出 Clash / sing-box / 通用 URI，按 UA 自动识别格式
 
-> Workers Scripts（编辑）、Workers KV（编辑）、Workers R2（编辑）、Workers Routes（编辑）
+它**不做**的事：监控、流量统计、测速、用户门户——纯中枢，够用就好。
 
-**里面没有 D1** —— 而 `deploy:ci` 第一步就是建 D1 库和表，撞上默认 token 会报 403 权限错误。
-所以要自己建一个带 D1 权限的 token 给构建用。
+---
 
-**创建 token**
+## 特性
 
-1. 打开 [API Tokens](https://dash.cloudflare.com/profile/api-tokens)
-   （或 Cloudflare 控制台右上角头像 → **My Profile** → **API Tokens**）
-2. 点 **Create Token** → 在模板列表往下找 **Custom Token** → **Get started**
-   （不要用 "Edit Cloudflare Workers" 模板，它不含 D1 权限）
-3. 起个名字，比如 `hakimi-build`
-4. 在 **Permissions** 区域点 `+ Add more`，逐条添加下面两条（每条选三格：资源 / 权限 / 级别）：
+- 🎯 **Xboard 兼容后端 API** — 现成节点后端零改动对接
+- 📡 **订阅输出** — Clash(mihomo) / sing-box / URI / base64，按客户端 UA 自动匹配
+- 🧩 **mihomo 模板注入** — Xboard 同款语义：自动注入节点/策略组，支持 `/正则/` 组内筛选
+- 📋 **协议参数表单** — Xboard 风格动态表单，vless/vmess/trojan/SS/hysteria2/tuic 全覆盖
+- 🔑 **三权分离** — 管理密码 / 通信密钥 / 订阅 token 互不相通
+- 🌐 **Cloudflare 部署** — Workers + D1 免费档跑 30+ 节点，push 即自动部署
+- 🪶 **单文件数据库** — D1（边缘 SQLite），`wrangler d1 export` 随时备份
 
-   | # | Resource（资源） | Permission（权限） | Access（级别） |
-   |---|---|---|---|
-   | 1 | `Account` | `Workers Scripts` | `Edit` |
-   | 2 | `Account` | `D1` | `Edit` |
+---
 
-5. **Account Resources** → 选 `Include` → `All accounts`（或只选你的账户）；
-   **Zone Resources** 不需要，留空即可
-6. 页面底部 → **Continue to summary** → 核对上面两条权限 → **Create Token**
-   → **点 Copy token 并立刻保存**（只显示这一次，丢了只能删掉重建）
+## 快速开始
 
-**挂到构建上**
+### 部署（Cloudflare 连 GitHub 自动部署）
 
-7. 回到 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → `hakimi`
-   → **Settings** → **Builds**（或 Build）→ 找到 **API token** 设置项
-8. 从默认（Automatically generated）切换为**你刚创建的 token**（按名字 `hakimi-build` 找）
-   → 保存；然后 **Retry** 重跑构建（或 Save and Deploy）
+1. **Fork** 本仓库到你的 GitHub
+2. 打开 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → **Create application** → **Import a repository** → 选择你的 Fork
+3. **Worker 名字填 `hakimi`**（必须与 `wrangler.toml` 的 `name` 一致，否则构建失败）
+4. **Deploy command 填 `npm run deploy:ci`**（不要用默认值）
+5. **Settings → Builds → API token** 换成自建 token（权限：`Account / Workers Scripts / Edit` + `Account / D1 / Edit`）
+6. **Save and Deploy** ✅
 
-**常见问题**
+> 详细 token 创建步骤见 [部署文档](#部署详解)。
 
-| 情况 | 处理 |
+### 首次使用
+
+1. 打开 `https://hakimi.<你的子域>.workers.dev` → **初始化**，设置管理密码
+2. **节点**页 → 新建节点（按类型出表单，选/填即可）
+3. **用户凭据**页 → 新建凭据（UUID 自动生成）
+4. **订阅**页 → 新建订阅（绑定凭据）→ 复制链接导入客户端
+5. **设置**页 → 复制「通信密钥」填进节点后端的 `ApiKey`
+
+---
+
+## 节点后端对接
+
+面板**设置**页的「通信密钥」即后端的 `ApiKey`，`NodeID` 填节点的 `id` 或 `code`（别名）：
+
+<details>
+<summary><b>XrayR</b>（PanelType: NewV2board）</summary>
+
+```yaml
+# config.yml
+Nodes:
+  - PanelType: "NewV2board"
+    ApiConfig:
+      ApiHost: "https://hakimi.xxx.workers.dev"
+      ApiKey: "面板设置页的通信密钥"
+      NodeID: 1
+      NodeType: "V2ray"          # VLESS 加 EnableVless: true
+```
+</details>
+
+<details>
+<summary><b>soga</b></summary>
+
+```ini
+# soga.conf（节选）
+panel_type = xboard
+api_host = https://hakimi.xxx.workers.dev
+api_key  = 通信密钥
+node_id  = 1
+```
+</details>
+
+<details>
+<summary><b>hysteria-v2board</b>（hy2 后端）</summary>
+
+```yaml
+# config.yaml（节选）
+v2board:
+  apiHost: https://hakimi.xxx.workers.dev
+  apiKey: 通信密钥
+  nodeID: 1
+```
+</details>
+
+### 兼容端点
+
+| 端点 | 行为 |
 |---|---|
-| token 复制丢了 / 怀疑泄露 | [API Tokens](https://dash.cloudflare.com/profile/api-tokens) 里把旧的 Delete，重新创建并挂载（第 7~8 步） |
-| 构建仍报 403 | 回 API Tokens 页点进 token 核对权限：必须是两条、级别是 **Edit** 不是 Read |
-| 不想再用 | API Tokens 页 Delete 即可，构建会立即失效 |
-
-> 这个 token 是给 Cloudflare **构建环境**用的账号凭证，与面板里的「通信密钥」
->（server_token，给节点后端用的）完全是两回事。
-
-> 没有自己的域名也能用 `https://hakimi.<你的子域>.workers.dev`；
-> 有 Cloudflare zone 的话在 Workers 设置里绑自定义域即可。
-
----
-
-## 首次使用
-
-1. 打开面板 → **初始化**，设置管理密码（通信密钥同时自动生成）
-2. **节点**页 → 新建节点：类型、地址、端口、协议参数（有按类型的预设，改几个值就行）
-   - 节点的 `Code` 可以填一个好记的别名（如 `hk01`），后端 `NodeID` 填它或数字 id 都行
-3. **用户凭据**页 → 新建凭据（UUID 自动生成）—— 一份凭据 = 一个 UUID，trojan/SS 密码由它派生，
-   建议按订阅/设备各建一份，丢失单独作废
-4. **订阅**页 → 新建订阅（绑定凭据，可按类型/标签过滤）→ 复制订阅链接
-5. 把订阅链接导入 Clash / sing-box / Shadowrocket 等客户端（也可以 `?flag=` 强制指定格式）
-6. 把**设置**页的通信密钥填进节点后端的 `ApiKey`（见下节）
+| `GET /api/v1/server/UniProxy/config` | 实装：节点配置 + `base_config`，带 ETag/304 |
+| `GET /api/v1/server/UniProxy/user` | 实装：凭据表 |
+| `GET /api/v2/server/{config,user}` | 同上（v2 认证） |
+| `GET /api/v1/server/TrojanTidalab/{config,user}` | 实装：trojan-go 风格 |
+| `GET /api/v1/server/ShadowsocksTidalab/user` | 实装：SS 凭据 |
+| `POST .../push\|submit\|alive\|status\|report` | 兼容收单（不落库），返回成功体 |
+| `GET\|POST /api/v2/server/handshake` | `{"websocket":{"enabled":false}}` |
 
 ---
 
@@ -96,127 +135,99 @@
 
 ```
 GET /s/{token}
-GET /s/{token}?types=vless|trojan            # 只出这些协议
-GET /s/{token}?filter=香港|IEPL              # 按名称/标签关键词过滤
-GET /s/{token}?flag=clash|sing-box|shadowrocket|general   # 强制输出格式
+GET /s/{token}?types=vless,trojan          # 只出这些协议
+GET /s/{token}?filter=香港                 # 名称/标签关键词过滤
+GET /s/{token}?flag=clash                  # 强制格式（clash / sing-box / shadowrocket / general）
 ```
 
-默认按客户端 UA 自动识别：Clash 系 → Clash YAML，sing-box → JSON，Shadowrocket/Surge 等 → URI 列表，未识别 → base64。
-订阅链接可随时在面板**轮换**（旧链接立即失效）。
+按客户端 UA 自动识别：Clash 系 → YAML，sing-box → JSON，Shadowrocket/Surge 等 → URI 列表，未识别 → base64。
 
-mihomo（Clash）的下发配置可在**设置 → mihomo 下发模板**里自定义，模板就是普通 YAML（Xboard 同款语义）：
-渲染时节点自动合并进 `proxies`、节点名自动追加进各策略组；策略组里写 `/正则/` 条目可只放进名称匹配的节点
-（如 `/香港|HK/`），无匹配的组自动移除；规则最前会注入订阅域名直连（防更新订阅走代理成环）。
-
----
-
-## 节点后端对接
-
-面板**设置**页的「通信密钥」即后端配置里的 `ApiKey`，`NodeID` 填节点的 `id` 或 `code`：
-
-```yaml
-# XrayR config.yml（PanelType: NewV2board = UniProxy 族）
-Nodes:
-  - PanelType: "NewV2board"
-    ApiConfig:
-      ApiHost: "https://panel.example.com"
-      ApiKey: "面板设置页的通信密钥"
-      NodeID: 1                      # 填 id 或 code
-      NodeType: "V2ray"              # VLESS 加 EnableVless: true
-```
-
-```ini
-# soga.conf（节选）
-panel_type = xboard                  # 或 v2board，视 soga 版本实现的端点族而定
-api_host = https://panel.example.com
-api_key  = 通信密钥
-node_id  = 1
-```
-
-```yaml
-# hysteria-v2board（hy2 后端，节选）
-v2board:
-  apiHost: https://panel.example.com
-  apiKey: 通信密钥
-  nodeID: 1
-```
-
-### 兼容端点
-
-| 端点 | 行为 |
-|---|---|
-| `GET /api/v1/server/UniProxy/config` | 实装：节点配置 + `base_config{push_interval,pull_interval}`，带 ETag/304 |
-| `GET /api/v1/server/UniProxy/user` | 实装：凭据表 `{users:[{id,uuid,speed_limit,device_limit}]}` |
-| `GET /api/v2/server/{config,user}` | 同上（v2 认证，`node_id` 支持 code 别名） |
-| `GET /api/v1/server/TrojanTidalab/{config,user}` | 实装：trojan-go 风格配置 / trojan_user 凭据 |
-| `GET /api/v1/server/ShadowsocksTidalab/user` | 实装：`{data:[{id,port,cipher,secret}]}` |
-| `POST .../push\|submit\|alive\|status\|report` | 兼容收单（不落库），返回各端点要求的成功体 |
-| `GET\|POST /api/v2/server/handshake` | `{"websocket":{"enabled":false}}` |
-| `GET .../alivelist` | `{"alive":{}}` |
-
-> 现行 Xboard 已移除 Deepbwork 族端点，本面板同样不提供；
-> XrayR 请用 `NewV2board` 模式（`V2board` 模式连 Xboard 也连不上）。
+mihomo 模板可在**设置 → mihomo 下发模板**自定义（Xboard 同款注入语义）：
+节点自动合并进 `proxies`、自动追加进策略组；组内写 `/正则/` 筛选节点；注入后为空的组自动移除。
 
 ---
 
 ## 开发
 
 ```bash
-npm run dev            # 后端本地调试（wrangler dev，需先 npm run build 产出 web/dist）
-npm run dev:web        # 前端本地调试（Vite，API 自动代理到 8787）
-npm run build          # 构建前端（tsc 类型检查 + vite 打包到 web/dist）
-npm run typecheck      # TypeScript 检查（后端 + 前端）
-npm run migrate:local  # 本地 D1 建表
-npm run deploy:ci      # 部署全流程（Cloudflare 构建运行的就是它）：D1 准备 + 建表 + 构建 + 部署
+npm install                  # 后端依赖
+npm ci --prefix web          # 前端依赖
+
+npm run dev                  # 后端本地调试（wrangler dev，需先 build）
+npm run dev:web              # 前端 Vite 开发（API 自动代理到 8787）
+npm run build                # 构建前端（tsc 检查 + vite 打包到 web/dist）
+npm run typecheck            # TypeScript 检查（后端 + 前端）
+npm run migrate:local        # 本地 D1 建表
+npm run deploy:ci            # 部署全流程（Cloudflare 构建运行的就是它）
 ```
 
 ```
+hakimi/
 ├── wrangler.toml            # Workers 配置（D1 绑定、静态资源）
 ├── migrations/              # D1 SQL 迁移
-├── scripts/prepare-d1.mjs   # Cloudflare 构建用：自动创建/复用 D1、写 database_id、建表
-├── src/
-│   ├── routes/              # admin（管理 API）/ serverapi（Xboard 兼容层）/ sub（订阅）
-│   ├── services/            # buildNodeConfig / 密码派生（照抄 Xboard 语义）
-│   ├── render/              # Clash / sing-box / URI 渲染器 + UA 识别
-│   └── db.ts · util.ts      # D1 访问 / PBKDF2 / ETag
-└── web/                     # 管理面板（React 19 + Vite + shadcn/ui + Tailwind v4）
-    ├── src/components/ui/  #   shadcn/ui 组件（radix 基座，Geist 字体，暗色主题）
-    ├── src/views/          #   节点 / 用户凭据 / 订阅 / 设置
-    └── dist/               #   构建产物（Workers Static Assets 托管，不入库）
+├── scripts/prepare-d1.mjs   # 构建用：自动创建/复用 D1、写 database_id、建表
+├── src/                     # 后端（Hono + TypeScript）
+│   ├── routes/              #   admin（管理 API）/ serverapi（Xboard 兼容层）/ sub（订阅）
+│   ├── services/            #   buildNodeConfig / 密码派生（照抄 Xboard 语义）
+│   └── render/              #   Clash / sing-box / URI 渲染器 + UA 识别
+├── web/                     # 前端（React 19 + Vite + shadcn/ui + Tailwind v4）
+│   ├── src/views/           #   节点 / 用户凭据 / 订阅 / 设置
+│   └── src/components/      #   shadcn/ui 组件 + 节点编辑弹窗
+└── PLAN.md                  # 架构设计文档
 ```
 
 ---
 
-## 范围与取舍
+## 部署详解
 
-**不做**：监控、流量统计、测速、在线 IP、设备限制（见 PLAN.md §2）。
-上报端点保留是为了后端不报错；以后想加统计，往 `push` 处理里落库即可。
+<details>
+<summary><b>为什么要换 API token？</b></summary>
 
-已知取舍：
+Cloudflare 执行构建时，构建过程自己也要「登录」你的账号才能建资源、传 Worker。
+默认自动生成的 token 只有 Workers/KV/R2 权限，**没有 D1**——而 `deploy:ci` 第一步就是建 D1 库和表。
 
-- SS2022 密码派生用 SHA-256 替代 Xboard 的 MD5（WebCrypto 无 MD5）——
-  config 下发的 `server_key` 与订阅密码两端都由本面板生成，保持一致即可互通
-- `handshake` 不提供 WS 长连接通道（`websocket.enabled=false`）
-- 订阅二维码暂未实现，直接复制链接即可导入
+**创建步骤（一次性，约 3 分钟）：**
+
+1. 打开 [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom Token**
+2. Permissions 添加两条：
+   - `Account` / `Workers Scripts` / `Edit`
+   - `Account` / `D1` / `Edit`
+3. Account Resources → `Include` → 你的账户 → **Create Token** → **复制保存**
+4. Workers & Pages → `hakimi` → Settings → Builds → **API token** → 选中你刚创建的 token
+
+</details>
+
+<details>
+<summary><b>用自定义域名？</b></summary>
+
+有 Cloudflare zone 的话，在 Workers 设置 → Domains & Routes 里绑定即可。
+没有也能用 `https://hakimi.<你的子域>.workers.dev`。
+
+</details>
+
+<details>
+<summary><b>数据库迁移</b></summary>
+
+`deploy:ci` 自动处理迁移（按序执行未跑过的）。
+以后改表结构只需要往 `migrations/` 加新 SQL 文件，push 即生效。
+
+备份：`wrangler d1 export hakimi > backup.sql`
+
+</details>
 
 ---
 
-## 故障排查
+## 已知取舍
 
-**构建/部署失败**
-| 现象 | 原因 |
+| 取舍 | 说明 |
 |---|---|
-| 构建立刻失败，日志提示 name 不匹配 | Worker 名字没填 `hakimi`（必须与 `wrangler.toml` 的 `name` 一致） |
-| 报 `database_id` 相关错误 | Deploy command 用了默认值——改成 `npm run deploy:ci` |
-| 报 403 / 权限错误（建库、建表时） | 构建的 API token 没有 D1 权限——按「第 4 步详解」换成自建 token |
-| 部署成功但面板 500 | 数据库表没建——看构建日志里 `prepare-d1` 的迁移步骤是否执行 |
+| SS2022 密码派生用 SHA-256 | WebCrypto 无 MD5；config 下发的 `server_key` 与订阅密码两端由面板生成，互通不受影响 |
+| `handshake` 不提供 WS 长连接 | `websocket.enabled=false`，纯中枢不需要 |
+| 订阅二维码暂未实现 | 直接复制链接即可导入 |
+| 上报端点收单即弃 | `push/alive/status` 只返回成功体不落库，以后想加统计往这里加一行即可 |
 
-**节点后端连不上面板**
-1. 后端日志报 `Invalid token` → 通信密钥没对上（设置页重新复制；轮换过的话后端要同步改）
-2. 报 `Server does not exist` → `NodeID` 填错（可以填节点 `code`）
-3. 报 404 on Deepbwork → 后端用的 `PanelType: V2board` 老模式，换成 `NewV2board`
-4. 拉到配置但客户端连不上 → 检查节点的 host/端口/证书（面板只管下发参数，证书在机器上）
+---
 
-**订阅导入失败**
-- 客户端报配置解析错误 → 用 `?flag=` 指定格式再试（如 `?flag=clash`、`?flag=sing-box`）
-- 导入成功但没有节点 → 检查订阅的类型/标签过滤条件；不想要的节点直接在面板删除
+## License
+
+[MIT](./LICENSE)
