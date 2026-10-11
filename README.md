@@ -32,28 +32,29 @@ npm run deploy
 
 ## 通过 GitHub 自动部署
 
-项目零构建、无 secrets 文件依赖，push 到 GitHub 即可接入 Cloudflare 自动部署。**先在本地完成一次性准备**：
+项目零构建、无 secrets 文件依赖，**不需要本地跑 wrangler**——`npm run deploy:ci` 会自动完成
+「创建/复用 D1 → 写入 database_id → 建表 → 部署」全流程。二选一：
 
-```bash
-npx wrangler d1 create hakimi        # 把 database_id 填进 wrangler.toml 并提交
-npm run migrate                       # 首次建表
-```
+**方式 A · Cloudflare Git 集成（推荐，push 即部署）**
 
-之后二选一：
-
-**方式 A · Cloudflare Git 集成（推荐，无需 CI 配置）**
-1. 把本仓库推到 GitHub
-2. Cloudflare 控制台 → Workers & Pages → Create → **Worker** → Connect to Git，选中仓库
-3. 构建设置：Build command 留空，Deploy command `npx wrangler deploy`（默认值）
-4. 之后每次 push 自动部署。schema 变更时手动跑一次 `npx wrangler d1 migrations apply hakimi --remote`
+1. Cloudflare 控制台 → Workers & Pages → **Create application** → **Import a repository** → 授权 GitHub 并选中本仓库
+2. **Worker 名字必须填 `hakimi`**（要与 `wrangler.toml` 的 `name` 一致，否则构建失败）
+3. Deploy command 填 `npm run deploy:ci`（不要用默认的 `npx wrangler deploy`）
+4. **换 API token**：Settings → Builds → API token → 创建自定义 token，权限需包含
+   **Account / D1 / Edit**（外加 Workers Scripts Edit）。Cloudflare 默认自动生成的 token
+   只有 Workers/KV/R2 权限、**没有 D1**，不换会导致建库/建表失败
+5. Save and Deploy → 之后每次 push 自动部署
 
 **方式 B · GitHub Actions（本仓库自带 `.github/workflows/deploy.yml`）**
-1. 推到 GitHub，在仓库 Settings → Secrets and variables → Actions 配置：
-   - `CLOUDFLARE_API_TOKEN`：Cloudflare API Token（权限 Account / Workers Scripts / D1 / Edit）
+
+1. 在仓库 Settings → Secrets and variables → Actions 配置：
+   - `CLOUDFLARE_API_TOKEN`：自建 API Token（权限 Account / Workers Scripts / D1 / Edit）
    - `CLOUDFLARE_ACCOUNT_ID`：账户 ID（Workers & Pages 首页右侧可见）
-2. push 到 `main` 分支自动执行：类型检查 → D1 迁移 → `wrangler deploy`
+2. push 到 `main` 自动执行：类型检查 → D1 准备/迁移 → 部署
 
 > 面板里的管理密码、通信密钥、订阅 token 都存在 D1 中，**不需要**在 CI 里配置任何应用级密钥。
+> 如果不想给构建 token D1 权限：先手动 `npx wrangler d1 create hakimi` 并把 `database_id`
+> 提交进 `wrangler.toml`，再把 Deploy command 改回 `npx wrangler deploy` 即可。
 
 ## 节点后端对接
 

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:ci": "node scripts/prepare-d1.mjs && wrangler deploy",
     "migrate:local": "wrangler d1 migrations apply hakimi --local",
     "migrate": "wrangler d1 migrations apply hakimi",
     "typecheck": "tsc --noEmit"
