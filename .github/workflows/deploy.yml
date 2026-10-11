@@ -28,6 +28,16 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check secrets
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CF_TOKEN" ] || [ -z "$CF_ACCOUNT" ]; then
+            echo "::error::缺少 Secrets。请到仓库 Settings → Secrets and variables → Actions 配置 CLOUDFLARE_API_TOKEN（权限含 Workers Scripts / D1 Edit）和 CLOUDFLARE_ACCOUNT_ID，然后重跑本次运行。"
+            exit 1
+          fi
+
       # 自动创建/复用 D1、写入 database_id、应用迁移、部署（一步到位）
       - name: Deploy
         run: npm run deploy:ci
