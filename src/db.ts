@@ -48,7 +48,7 @@ export async function listServers(db: D1Database): Promise<ServerRow[]> {
   return res.results ?? [];
 }
 
-/** 对齐 Xboard ServerService::getServer：code 优先于 id 匹配 */
+/** 后端拉取的节点查找：code 优先于 id 匹配 */
 export async function getServer(db: D1Database, idOrCode: string | number): Promise<ServerRow | null> {
   return db
     .prepare(
@@ -57,13 +57,6 @@ export async function getServer(db: D1Database, idOrCode: string | number): Prom
     )
     .bind(String(idOrCode), Number(idOrCode) || -1, String(idOrCode))
     .first<ServerRow>();
-}
-
-export async function enabledServers(db: D1Database): Promise<ServerRow[]> {
-  const res = await db
-    .prepare('SELECT * FROM servers WHERE enabled = 1 AND show = 1 ORDER BY sort ASC, id ASC')
-    .all<ServerRow>();
-  return res.results ?? [];
 }
 
 /* ---------- users ---------- */

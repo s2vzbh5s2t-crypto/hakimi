@@ -93,13 +93,11 @@ function serverPayload(body: any) {
     type,
     group_ids: JSON.stringify(body.group_ids ?? []),
     tags: JSON.stringify(body.tags ?? []),
-    show: body.show === false || body.show === 0 ? 0 : 1,
     sort: Number(body.sort ?? 0),
     host: String(body.host ?? ''),
     port: String(body.port ?? ''),
     server_port: Number(body.server_port ?? 0),
     protocol_settings: JSON.stringify(body.protocol_settings ?? {}),
-    enabled: body.enabled === false || body.enabled === 0 ? 0 : 1,
   };
 }
 
@@ -121,12 +119,12 @@ adminApi.post('/api/admin/servers', adminAuth, async (c) => {
     const now = Math.floor(Date.now() / 1000);
     const res = await c.env.DB
       .prepare(
-        `INSERT INTO servers (code, name, type, group_ids, tags, show, sort, host, port, server_port,
-                              protocol_settings, enabled, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO servers (code, name, type, group_ids, tags, sort, host, port, server_port,
+                              protocol_settings, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(p.code, p.name, p.type, p.group_ids, p.tags, p.show, p.sort, p.host, p.port, p.server_port,
-        p.protocol_settings, p.enabled, now, now)
+      .bind(p.code, p.name, p.type, p.group_ids, p.tags, p.sort, p.host, p.port, p.server_port,
+        p.protocol_settings, now, now)
       .run();
     return c.json({ data: { id: res.meta.last_row_id } }, 201);
   } catch (e) {
@@ -140,11 +138,11 @@ adminApi.put('/api/admin/servers/:id', adminAuth, async (c) => {
     const now = Math.floor(Date.now() / 1000);
     await c.env.DB
       .prepare(
-        `UPDATE servers SET code=?, name=?, type=?, group_ids=?, tags=?, show=?, sort=?, host=?, port=?,
-                            server_port=?, protocol_settings=?, enabled=?, updated_at=? WHERE id=?`,
+        `UPDATE servers SET code=?, name=?, type=?, group_ids=?, tags=?, sort=?, host=?, port=?,
+                            server_port=?, protocol_settings=?, updated_at=? WHERE id=?`,
       )
-      .bind(p.code, p.name, p.type, p.group_ids, p.tags, p.show, p.sort, p.host, p.port, p.server_port,
-        p.protocol_settings, p.enabled, now, Number(c.req.param('id')))
+      .bind(p.code, p.name, p.type, p.group_ids, p.tags, p.sort, p.host, p.port, p.server_port,
+        p.protocol_settings, now, Number(c.req.param('id')))
       .run();
     return c.json({ data: true });
   } catch (e) {

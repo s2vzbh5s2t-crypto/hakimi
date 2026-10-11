@@ -32,13 +32,11 @@ export type ServerRow = {
   type: string; // vless | vmess | trojan | shadowsocks | hysteria | tuic
   group_ids: string;
   tags: string;
-  show: number;
   sort: number;
   host: string;
   port: string;
   server_port: number;
   protocol_settings: string;
-  enabled: number;
   created_at: number;
   updated_at: number;
 };

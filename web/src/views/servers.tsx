@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
@@ -73,8 +71,6 @@ type FormState = {
   server_port: string;
   sort: string;
   tags: string;
-  show: boolean;
-  enabled: boolean;
   ps: string;
 };
 
@@ -88,8 +84,6 @@ function toForm(s?: Server): FormState {
     server_port: s ? String(s.server_port) : '',
     sort: s ? String(s.sort) : '0',
     tags: (s?.tags ?? []).join(','),
-    show: s ? s.show !== 0 : true,
-    enabled: s ? s.enabled !== 0 : true,
     ps: JSON.stringify(s?.protocol_settings ?? TYPE_PRESETS.vless, null, 2),
   };
 }
@@ -131,8 +125,6 @@ function ServerDialog({
           .split(/[,，]+/)
           .map((t) => t.trim())
           .filter(Boolean),
-        show: form.show,
-        enabled: form.enabled,
         protocol_settings: protocolSettings,
       };
       if (editing) await api(`/api/admin/servers/${editing.id}`, { method: 'PUT', body: payload });
@@ -205,14 +197,6 @@ function ServerDialog({
             <Label>标签（逗号分隔）</Label>
             <Input value={form.tags} placeholder="香港,IEPL" onChange={(e) => set({ tags: e.target.value })} />
           </div>
-        </div>
-        <div className="flex items-center gap-6 pt-1">
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={form.show} onCheckedChange={(v) => set({ show: v === true })} /> 订阅中显示
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={form.enabled} onCheckedChange={(v) => set({ enabled: v })} /> 启用
-          </label>
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
@@ -299,14 +283,13 @@ export function ServersView() {
               <TableHead>地址</TableHead>
               <TableHead>端口</TableHead>
               <TableHead>服务端口</TableHead>
-              <TableHead>状态</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {servers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   暂无节点，点右上角新建
                 </TableCell>
               </TableRow>
@@ -322,13 +305,6 @@ export function ServersView() {
                 <TableCell>{s.host}</TableCell>
                 <TableCell>{s.port}</TableCell>
                 <TableCell>{s.server_port}</TableCell>
-                <TableCell>
-                  {s.enabled ? (
-                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">启用</Badge>
-                  ) : (
-                    <Badge variant="secondary">停用</Badge>
-                  )}
-                </TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="ghost"

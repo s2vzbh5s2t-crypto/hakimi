@@ -2,7 +2,7 @@
 
 > 定位：**个人自用、单用户的纯节点中枢**，托管 Cloudflare Workers/Pages + D1，服务器成本 $0。
 > 职责只有三件事：
-> ① **管理节点配置**（增删改、分组、启用停用）
+> ① **管理节点配置**（增删改、分组）
 > ② **给后端提供配置**——soga / XrayR / V2bX / hysteria-v2board 通过面板的后端 API 拉取节点配置与用户凭据并运行
 > ③ **给客户端提供订阅链接**——导入 Clash / sing-box / Shadowrocket 等软件直接使用
 >
@@ -65,7 +65,7 @@
 
 ### M1 节点管理
 - 节点 CRUD；类型（`Server::VALID_TYPES` + `TYPE_ALIASES` 归一化）：`vless` / `vmess` / `trojan` / `shadowsocks` / `hysteria` / `tuic`（可选 `anytls` / `socks` / `naive` / `http`）
-- 节点字段对齐 Xboard：`code`（可读别名）、`name`、`host`（连接地址）、`port`（客户端连接端口，支持 `1000-2000` 动态范围）、`server_port`（服务端监听端口）、`tags`、`show`、`sort`、`protocol_settings`（JSON）
+- 节点字段对齐 Xboard：`code`（可读别名）、`name`、`host`（连接地址）、`port`（客户端连接端口，支持 `1000-2000` 动态范围）、`server_port`（服务端监听端口）、`tags`、`sort`、`protocol_settings`（JSON）
 - `protocol_settings` 按类型表单化：`network/network_settings`（tcp/ws/grpc/h2）、`tls`(0/1/2：无/TLS/Reality)、`tls_settings`、`reality_settings`、`flow`、`multiplex`、`cipher/plugin/plugin_opts`（SS）、`bandwidth/obfs`（hysteria）、`congestion_control`（tuic）等
 
 ### M2 用户与凭据（单人）
@@ -91,10 +91,10 @@
 ```sql
 servers          (id, code,                       -- code: 字符串别名，后端 NodeID 可填 code 或 id
                   name, type,                     -- vless|vmess|trojan|shadowsocks|hysteria|tuic|...
-                  group_ids, tags, show, sort,
+                  group_ids, tags, sort,
                   host, port, server_port,        -- port 支持 "1000-2000" 动态范围
                   protocol_settings,              -- JSON，字段结构照抄 Xboard（见 §6.3 config）
-                  enabled, created_at, updated_at)
+                  created_at, updated_at)
 users            (id, email,                      -- email 仅作备注/标识
                   uuid,                           -- 唯一凭据字段，其他协议密码全部由它派生
                   enabled)

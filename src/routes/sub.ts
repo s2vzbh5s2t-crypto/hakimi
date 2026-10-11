@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { AppEnv, SubFilter, SubRow } from '../types';
-import { enabledServers, getSubByToken, getUser, getSetting, getSettingInt } from '../db';
+import { listServers, getSubByToken, getUser, getSetting, getSettingInt } from '../db';
 import { buildRenderNodes } from '../render/common';
 import { contentTypeFor, detectFormat, render } from '../render';
 
@@ -26,7 +26,7 @@ async function serveSub(c: any, token: string): Promise<Response> {
   const types = qTypes.length ? qTypes : filter.types ?? [];
   const keywords = qKeywords.length ? qKeywords : filter.keywords ?? [];
 
-  let servers = await enabledServers(c.env.DB);
+  let servers = await listServers(c.env.DB);
   if (filter.server_ids?.length) {
     servers = servers.filter((s) => filter.server_ids!.includes(s.id));
   }

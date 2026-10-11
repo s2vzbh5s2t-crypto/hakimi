@@ -7,13 +7,11 @@ export type Server = {
   type: string;
   group_ids: string[];
   tags: string[];
-  show: number;
   sort: number;
   host: string;
   port: string;
   server_port: number;
   protocol_settings: Record<string, unknown>;
-  enabled: number;
   created_at: number;
   updated_at: number;
 };
