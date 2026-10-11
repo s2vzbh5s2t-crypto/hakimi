@@ -1,6 +1,11 @@
 import type { RenderNode } from './common';
 import { classifySsPlugin } from './common';
 
+/** URL-safe base64（SIP002 / v2rayN 标准：`+/` → `-_`，去 `=`） */
+function b64url(text: string): string {
+  return btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 /** 通用 URI 列表输出（v2rayN / Shadowrocket / Surge 等都能吃） */
 export function renderUris(nodes: RenderNode[], base64Wrap: boolean): string {
   const lines = nodes.map(buildUri).join('\n');
@@ -19,6 +24,7 @@ function buildUri(n: RenderNode): string {
       if (n.tls) {
         q.set('security', n.reality ? 'reality' : 'tls');
         q.set('sni', n.serverName);
+        if (n.insecure) q.set('allowInsecure', '1');
         if (n.reality) {
           q.set('pbk', n.realityPublicKey);
           q.set('sid', n.realityShortId);
@@ -46,15 +52,25 @@ function buildUri(n: RenderNode): string {
         tls: n.tls ? 'tls' : '',
         sni: n.tls ? n.serverName : '',
       };
-      return `vmess://${btoa(JSON.stringify(conf))}`;
+      return `vmess://${b64url(JSON.stringify(conf))}`;
     }
     case 'trojan': {
-      const q = new URLSearchParams({ security: 'tls', sni: n.serverName, type: n.network });
+      const q = new URLSearchParams({
+        security: n.reality ? 'reality' : 'tls',
+        sni: n.serverName,
+        type: n.network,
+      });
+      if (n.insecure) q.set('allowInsecure', '1');
+      if (n.reality) {
+        q.set('pbk', n.realityPublicKey);
+        q.set('sid', n.realityShortId);
+        q.set('fp', 'chrome');
+      }
       applyStream(q, n);
       return `trojan://${encodeURIComponent(n.password)}@${n.host}:${n.port}?${q}#${name(n)}`;
     }
     case 'shadowsocks': {
-      const userinfo = btoa(`${n.ssCipher}:${n.password}`);
+      const userinfo = b64url(`${n.ssCipher}:${n.password}`);
       let uri = `ss://${userinfo}@${n.host}:${n.port}`;
       if (n.ssPlugin && n.ssPluginOpts) {
         // SIP002 插件参数：obfs 别名归一为标准本地插件名 obfs-local

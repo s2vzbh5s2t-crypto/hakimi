@@ -39,6 +39,11 @@ function str(v: unknown): string {
   return v == null ? '' : String(v);
 }
 
+/** 多态字段（如 tls 有时是数字有时是对象）→ Record */
+function rec(v: unknown): Record<string, any> | null {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : null;
+}
+
 export async function buildRenderNodes(servers: ServerRow[], user: UserRow): Promise<RenderNode[]> {
   const out: RenderNode[] = [];
   for (const row of servers) {
@@ -54,6 +59,13 @@ export async function buildRenderNodes(servers: ServerRow[], user: UserRow): Pro
 
     const secret = await deriveUserSecret(row, user);
 
+    // insecure：vless/vmess/trojan 从 tls_settings/reality_settings 读；hysteria/tuic 从 tls.allow_insecure 读
+    const hyTuicTls = rec(ps.tls);
+    const insecure =
+      row.type === 'hysteria' || row.type === 'tuic'
+        ? !!hyTuicTls?.allow_insecure
+        : !!tlsSettings?.allow_insecure;
+
     out.push({
       name: row.name,
       type: row.type,
@@ -66,9 +78,9 @@ export async function buildRenderNodes(servers: ServerRow[], user: UserRow): Pro
       tls: row.type === 'trojan' ? true : tlsNum >= 1,
       reality,
       serverName: str(tlsSettings?.server_name ?? hyTls?.server_name ?? ps.server_name) || row.host,
-      insecure: !!tlsSettings?.allow_insecure,
+      insecure,
       wsPath: str(ns.path) || '/',
-      wsHost: str(ns.host ?? ns.headers?.Host) || row.host,
+      wsHost: str(ns.headers?.Host ?? ns.host) || row.host,
       grpcService: str(ns.serviceName ?? ns.service_name),
       h2Path: str(ns.path) || '/',
       h2Host: str(ns.host) || row.host,
@@ -83,7 +95,7 @@ export async function buildRenderNodes(servers: ServerRow[], user: UserRow): Pro
       downMbps: Number(ps.bandwidth?.down ?? 100),
       obfsType: ps.obfs?.open ? str(ps.obfs?.type) || 'salamander' : '',
       obfsPassword: str(ps.obfs?.password),
-      tuicCongestion: str(ps.congestion_control) || 'bbr',
+      tuicCongestion: str(ps.congestion_control) || 'cubic',
     });
   }
   return out;

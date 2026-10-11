@@ -117,6 +117,7 @@ function buildProxy(n: RenderNode): Record<string, unknown> {
         ...(n.tls
           ? {
               tls: true,
+              'skip-cert-verify': n.insecure,
               servername: n.serverName,
               ...(n.reality
                 ? {
@@ -137,7 +138,7 @@ function buildProxy(n: RenderNode): Record<string, unknown> {
         uuid: n.uuid,
         alterId: 0,
         cipher: 'auto',
-        ...(n.tls ? { tls: true, servername: n.serverName } : {}),
+        ...(n.tls ? { tls: true, 'skip-cert-verify': n.insecure, servername: n.serverName } : {}),
         ...stream,
       };
     case 'trojan':
@@ -148,6 +149,13 @@ function buildProxy(n: RenderNode): Record<string, unknown> {
         port: n.port,
         password: n.password,
         sni: n.serverName,
+        'skip-cert-verify': n.insecure,
+        ...(n.reality
+          ? {
+              'client-fingerprint': 'chrome',
+              'reality-opts': { 'public-key': n.realityPublicKey, 'short-id': n.realityShortId },
+            }
+          : {}),
         ...stream,
       };
     case 'shadowsocks':
@@ -167,10 +175,14 @@ function buildProxy(n: RenderNode): Record<string, unknown> {
           type: 'hysteria',
           server: n.host,
           port: n.port,
-          'auth-str': n.password,
+          auth_str: n.password,
           sni: n.serverName,
           up: n.upMbps,
           down: n.downMbps,
+          'skip-cert-verify': n.insecure,
+          protocol: 'udp',
+          'fast-open': true,
+          'disable_mtu_discovery': true,
           ...(n.obfsType ? { obfs: n.obfsPassword } : {}),
         };
       }
@@ -181,6 +193,7 @@ function buildProxy(n: RenderNode): Record<string, unknown> {
         port: n.port,
         password: n.password,
         sni: n.serverName,
+        'skip-cert-verify': n.insecure,
         ...(n.obfsType ? { obfs: n.obfsType, 'obfs-password': n.obfsPassword } : {}),
       };
     case 'tuic':
@@ -192,6 +205,7 @@ function buildProxy(n: RenderNode): Record<string, unknown> {
         uuid: n.uuid,
         password: n.password,
         sni: n.serverName,
+        'skip-cert-verify': n.insecure,
         'congestion-controller': n.tuicCongestion,
         'udp-relay-mode': 'native',
       };

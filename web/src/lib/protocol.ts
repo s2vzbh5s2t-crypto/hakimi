@@ -123,7 +123,7 @@ export function formFromSettings(ps: AnyObj): ProtoForm {
 
   f.network = typeof ps.network === 'string' ? ps.network : 'tcp';
   f.wsPath = String(ns.path ?? '/');
-  f.wsHost = String(ns.host ?? '');
+  f.wsHost = String(ns.headers?.Host ?? ns.host ?? '');
   f.grpcService = String(ns.serviceName ?? ns.service_name ?? '');
   f.h2Path = String(ns.path ?? '/');
   f.h2Host = String(ns.host ?? '');
@@ -131,7 +131,7 @@ export function formFromSettings(ps: AnyObj): ProtoForm {
   if (['vless', 'vmess', 'trojan'].includes(String(ps.__type ?? '')) || true) {
     f.tlsMode = Number.isFinite(tlsNum) ? tlsNum : 0;
     f.sni = String(tlsSettings.server_name ?? '');
-    f.allowInsecure = !!tlsSettings.allow_insecure;
+    f.allowInsecure = !!tlsSettings.allow_insecure || !!reality.allow_insecure;
     f.flow = String(ps.flow ?? '') || 'none';
     f.realityServerNames = Array.isArray(reality.server_names) ? reality.server_names.join(', ') : '';
     f.realityDest = String(reality.dest ?? '');
@@ -195,7 +195,7 @@ export function settingsFromForm(type: string, f: ProtoForm, original: AnyObj = 
   }
 
   const networkSettings = (): AnyObj | null => {
-    if (f.network === 'ws') return { path: f.wsPath || '/', host: f.wsHost };
+    if (f.network === 'ws') return { path: f.wsPath || '/', headers: { Host: f.wsHost } };
     if (f.network === 'grpc') return { serviceName: f.grpcService };
     if (f.network === 'h2') return { path: f.h2Path || '/', host: f.h2Host };
     return null;
@@ -205,21 +205,30 @@ export function settingsFromForm(type: string, f: ProtoForm, original: AnyObj = 
     out.network = f.network;
     out.network_settings = networkSettings();
     out.tls = f.tlsMode;
-    const tlsSettings = {
-      ...((original.tls_settings as AnyObj) ?? {}),
-      server_name: f.sni,
-      allow_insecure: f.allowInsecure,
-    };
-    out.tls_settings = tlsSettings;
     if (f.tlsMode === 2) {
+      // Reality：allow_insecure / server_name 写入 reality_settings（对齐 Xboard 语义）
+      out.tls_settings = {
+        ...((original.tls_settings as AnyObj) ?? {}),
+        server_name: f.sni,
+        allow_insecure: f.allowInsecure,
+      };
       out.reality_settings = {
         ...((original.reality_settings as AnyObj) ?? {}),
+        allow_insecure: f.allowInsecure,
+        server_name: f.sni,
         server_names: f.realityServerNames.split(/[,，]+/).map((s) => s.trim()).filter(Boolean),
         dest: f.realityDest,
         private_key: f.realityPrivateKey,
         public_key: f.realityPublicKey,
         short_id: f.realityShortId,
       };
+    } else {
+      out.tls_settings = {
+        ...((original.tls_settings as AnyObj) ?? {}),
+        server_name: f.sni,
+        allow_insecure: f.allowInsecure,
+      };
+      if (original.reality_settings) out.reality_settings = original.reality_settings;
     }
     if (type === 'vless') out.flow = f.flow === 'none' ? '' : f.flow;
   }
