@@ -1,31 +1,43 @@
 import type { RenderNode } from './common';
 import { toYaml } from './common';
 
-/** Clash / ClashMeta（mihomo）配置输出 */
-export function renderClash(nodes: RenderNode[]): string {
-  const proxies = nodes.map(buildProxy);
-  const names = nodes.map((n) => n.name);
+/**
+ * mihomo（Clash.Meta）下发模板。
+ * 占位符：
+ *   {{PROXIES}}     — 节点列表（YAML，已带缩进）
+ *   {{PROXY_NAMES}} — 节点名列表（已加引号，逗号分隔）
+ */
+export const DEFAULT_CLASH_TEMPLATE = `# Hakimi mihomo 下发模板
+# 占位符：{{PROXIES}} = 节点列表；{{PROXY_NAMES}} = 节点名列表
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: false
+proxies:
+{{PROXIES}}
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [auto, {{PROXY_NAMES}}]
+  - name: auto
+    type: url-test
+    proxies: [{{PROXY_NAMES}}]
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+rules:
+  - MATCH,PROXY
+`;
 
-  const doc = {
-    'mixed-port': 7890,
-    'allow-lan': false,
-    mode: 'rule',
-    'log-level': 'info',
-    ipv6: false,
-    proxies,
-    'proxy-groups': [
-      { name: 'PROXY', type: 'select', proxies: ['auto', ...names] },
-      {
-        name: 'auto',
-        type: 'url-test',
-        proxies: names,
-        url: 'https://www.gstatic.com/generate_204',
-        interval: 300,
-      },
-    ],
-    rules: ['MATCH,PROXY'],
-  };
-  return toYaml(doc) + '\n';
+/** Clash / ClashMeta（mihomo）配置输出 */
+export function renderClash(nodes: RenderNode[], template = DEFAULT_CLASH_TEMPLATE): string {
+  const proxiesBlock = nodes.length ? toYaml(nodes.map(buildProxy), 2) : '  []';
+  const names = nodes.map((n) => JSON.stringify(n.name)).join(', ');
+
+  const out = template
+    .replaceAll('{{PROXIES}}', proxiesBlock)
+    .replaceAll('{{PROXY_NAMES}}', names);
+  return out.endsWith('\n') ? out : out + '\n';
 }
 
 function buildProxy(n: RenderNode): Record<string, unknown> {

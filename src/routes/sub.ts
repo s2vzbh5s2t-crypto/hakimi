@@ -3,6 +3,7 @@ import type { AppEnv, SubFilter, SubRow } from '../types';
 import { listServers, getSubByToken, getUser, getSetting, getSettingInt } from '../db';
 import { buildRenderNodes } from '../render/common';
 import { contentTypeFor, detectFormat, render } from '../render';
+import { DEFAULT_CLASH_TEMPLATE } from '../render/clash';
 
 export const subRoutes = new Hono<AppEnv>();
 
@@ -50,7 +51,8 @@ async function serveSub(c: any, token: string): Promise<Response> {
 
   const nodes = await buildRenderNodes(servers, user);
   const format = detectFormat(c.req.header('User-Agent') ?? '', c.req.query('flag'));
-  const body = render(format, nodes);
+  const clashTemplate = format === 'clash' ? await getSetting(c.env.DB, 'clash_template', DEFAULT_CLASH_TEMPLATE) : '';
+  const body = render(format, nodes, { clashTemplate });
 
   return c.body(body, 200, {
     'Content-Type': contentTypeFor(format),

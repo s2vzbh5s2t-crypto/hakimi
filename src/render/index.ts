@@ -1,9 +1,14 @@
 import type { RenderNode } from './common';
-import { renderClash } from './clash';
+import { DEFAULT_CLASH_TEMPLATE, renderClash } from './clash';
 import { renderSingBox } from './singbox';
 import { renderUris } from './uri';
 
 export type RenderFormat = 'clash' | 'singbox' | 'uri' | 'uri-b64';
+
+export type RenderOptions = {
+  /** mihomo 下发模板（settings.clash_template） */
+  clashTemplate?: string;
+};
 
 /** UA → 格式识别（对齐 Xboard app/Protocols 的 flag 族，覆盖面从简） */
 export function detectFormat(userAgent: string, flag?: string): RenderFormat {
@@ -32,10 +37,10 @@ export function contentTypeFor(format: RenderFormat): string {
   }
 }
 
-export function render(format: RenderFormat, nodes: RenderNode[]): string {
+export function render(format: RenderFormat, nodes: RenderNode[], opts: RenderOptions = {}): string {
   switch (format) {
     case 'clash':
-      return renderClash(nodes);
+      return renderClash(nodes, opts.clashTemplate || DEFAULT_CLASH_TEMPLATE);
     case 'singbox':
       return renderSingBox(nodes);
     case 'uri':

@@ -14,6 +14,7 @@ import {
   validSession,
 } from '../db';
 import { hashPassword, newUuidV4, randomHex, sha256Hex, verifyPassword } from '../util';
+import { DEFAULT_CLASH_TEMPLATE } from '../render/clash';
 
 export const adminApi = new Hono<AppEnv>();
 
@@ -241,6 +242,8 @@ adminApi.get('/api/admin/settings', adminAuth, async (c) => {
       subscribe_path: await getSetting(c.env.DB, 'subscribe_path', 's'),
       push_interval: await getSettingInt(c.env.DB, 'push_interval', 60),
       pull_interval: await getSettingInt(c.env.DB, 'pull_interval', 60),
+      clash_template: await getSetting(c.env.DB, 'clash_template', DEFAULT_CLASH_TEMPLATE),
+      clash_template_default: DEFAULT_CLASH_TEMPLATE,
     },
   });
 });
@@ -250,6 +253,12 @@ adminApi.put('/api/admin/settings', adminAuth, async (c) => {
   if (body.subscribe_path) await setSetting(c.env.DB, 'subscribe_path', String(body.subscribe_path).replace(/^\/+|\/+$/g, '') || 's');
   if (body.push_interval) await setSetting(c.env.DB, 'push_interval', String(Math.max(30, Number(body.push_interval) || 60)));
   if (body.pull_interval) await setSetting(c.env.DB, 'pull_interval', String(Math.max(30, Number(body.pull_interval) || 60)));
+  if (typeof body.clash_template === 'string') {
+    if (!body.clash_template.includes('{{PROXIES}}')) {
+      return c.json({ message: '模板必须包含 {{PROXIES}} 占位符' }, 422);
+    }
+    await setSetting(c.env.DB, 'clash_template', body.clash_template);
+  }
   return c.json({ data: true });
 });
 

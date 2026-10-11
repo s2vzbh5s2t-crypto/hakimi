@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Copy, RefreshCw } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Copy, RefreshCw, RotateCcw } from 'lucide-react';
 import { api, type Settings } from '@/lib/api';
 
 export function SettingsView() {
@@ -18,6 +19,7 @@ export function SettingsView() {
   const [subscribePath, setSubscribePath] = useState('');
   const [pullInterval, setPullInterval] = useState('60');
   const [pushInterval, setPushInterval] = useState('60');
+  const [clashTemplate, setClashTemplate] = useState('');
 
   async function load() {
     try {
@@ -26,6 +28,7 @@ export function SettingsView() {
       setSubscribePath(s.subscribe_path);
       setPullInterval(String(s.pull_interval));
       setPushInterval(String(s.push_interval));
+      setClashTemplate(s.clash_template);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -51,6 +54,15 @@ export function SettingsView() {
         method: 'PUT',
         body: { subscribe_path: subscribePath, pull_interval: pullInterval, push_interval: pushInterval },
       });
+      toast.success('已保存');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function saveTemplate() {
+    try {
+      await api('/api/admin/settings', { method: 'PUT', body: { clash_template: clashTemplate } });
       toast.success('已保存');
     } catch (err) {
       toast.error((err as Error).message);
@@ -130,6 +142,36 @@ export function SettingsView() {
             </div>
             <Button className="cursor-pointer" onClick={saveGeneral}>
               保存
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>mihomo（Clash）下发模板</CardTitle>
+          <CardDescription>
+            订阅输出的完整配置骨架。占位符：<code>{'{{PROXIES}}'}</code> = 节点列表，<code>{'{{PROXY_NAMES}}'}</code> =
+            节点名列表（已加引号）。模板必须包含 <code>{'{{PROXIES}}'}</code>。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            className="min-h-96 font-mono text-xs"
+            spellCheck={false}
+            value={clashTemplate}
+            onChange={(e) => setClashTemplate(e.target.value)}
+          />
+          <div className="mt-3 flex gap-2">
+            <Button className="cursor-pointer" onClick={saveTemplate}>
+              保存模板
+            </Button>
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => setClashTemplate(settings?.clash_template_default ?? '')}
+            >
+              <RotateCcw /> 恢复默认
             </Button>
           </div>
         </CardContent>

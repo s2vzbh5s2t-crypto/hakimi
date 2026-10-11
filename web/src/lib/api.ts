@@ -40,6 +40,8 @@ export type Settings = {
   subscribe_path: string;
   push_interval: number;
   pull_interval: number;
+  clash_template: string;
+  clash_template_default: string;
 };
 
 export async function api<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
