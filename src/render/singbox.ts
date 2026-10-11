@@ -1,4 +1,5 @@
 import type { RenderNode } from './common';
+import { classifySsPlugin } from './common';
 
 /** sing-box 配置输出 */
 export function renderSingBox(nodes: RenderNode[]): string {
@@ -85,7 +86,18 @@ function buildOutbound(n: RenderNode): Record<string, unknown> {
       };
     }
     case 'shadowsocks':
-      return { ...base, type: 'shadowsocks', method: n.ssCipher, password: n.password };
+      return {
+        ...base,
+        type: 'shadowsocks',
+        method: n.ssCipher,
+        password: n.password,
+        ...(n.ssPlugin && n.ssPluginOpts
+          ? {
+              plugin: classifySsPlugin(n.ssPlugin) === 'obfs' ? 'obfs' : n.ssPlugin,
+              plugin_opts: n.ssPluginOpts,
+            }
+          : {}),
+      };
     case 'hysteria':
       return {
         ...base,

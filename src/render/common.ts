@@ -25,6 +25,8 @@ export type RenderNode = {
   realityPublicKey: string;
   realityShortId: string;
   ssCipher: string;
+  ssPlugin: string;
+  ssPluginOpts: string;
   hysteriaVersion: number;
   upMbps: number;
   downMbps: number;
@@ -74,6 +76,8 @@ export async function buildRenderNodes(servers: ServerRow[], user: UserRow): Pro
       realityPublicKey: str(ps.reality_settings?.public_key),
       realityShortId: str(ps.reality_settings?.short_id),
       ssCipher: str(ps.cipher) || 'aes-128-gcm',
+      ssPlugin: str(ps.plugin),
+      ssPluginOpts: str(ps.plugin_opts),
       hysteriaVersion: Number(ps.version ?? 2),
       upMbps: Number(ps.bandwidth?.up ?? 100),
       downMbps: Number(ps.bandwidth?.down ?? 100),
@@ -81,6 +85,30 @@ export async function buildRenderNodes(servers: ServerRow[], user: UserRow): Pro
       obfsPassword: str(ps.obfs?.password),
       tuicCongestion: str(ps.congestion_control) || 'bbr',
     });
+  }
+  return out;
+}
+
+/* ---------- SS 插件工具（对齐 Xboard ClashMeta::buildShadowsocks） ---------- */
+
+/** 插件名归一：Simple Obfs / obfs-local 等别名 → obfs */
+export function classifySsPlugin(raw: string): 'obfs' | 'v2ray-plugin' | 'shadow-tls' | 'restls' | 'other' {
+  const p = raw.toLowerCase().trim();
+  if (['obfs', 'obfs-local', 'simple-obfs', 'simpleobfs', 'simple obfs'].includes(p)) return 'obfs';
+  if (p === 'v2ray-plugin') return 'v2ray-plugin';
+  if (p === 'shadow-tls' || p === 'shadowtls') return 'shadow-tls';
+  if (p === 'restls') return 'restls';
+  return 'other';
+}
+
+/** `obfs=http;obfs-host=xxx;path=/` → {obfs:"http", "obfs-host":"xxx", path:"/"} */
+export function parsePluginOpts(opts: string): Record<string, string | true> {
+  const out: Record<string, string | true> = {};
+  for (const pair of opts.split(';')) {
+    if (!pair.trim()) continue;
+    const idx = pair.indexOf('=');
+    if (idx === -1) out[pair.trim()] = true;
+    else out[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
   }
   return out;
 }

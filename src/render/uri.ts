@@ -1,4 +1,5 @@
 import type { RenderNode } from './common';
+import { classifySsPlugin } from './common';
 
 /** 通用 URI 列表输出（v2rayN / Shadowrocket / Surge 等都能吃） */
 export function renderUris(nodes: RenderNode[], base64Wrap: boolean): string {
@@ -54,7 +55,13 @@ function buildUri(n: RenderNode): string {
     }
     case 'shadowsocks': {
       const userinfo = btoa(`${n.ssCipher}:${n.password}`);
-      return `ss://${userinfo}@${n.host}:${n.port}#${name(n)}`;
+      let uri = `ss://${userinfo}@${n.host}:${n.port}`;
+      if (n.ssPlugin && n.ssPluginOpts) {
+        // SIP002 插件参数：obfs 别名归一为标准本地插件名 obfs-local
+        const pluginName = classifySsPlugin(n.ssPlugin) === 'obfs' ? 'obfs-local' : n.ssPlugin;
+        uri += `/?plugin=${encodeURIComponent(`${pluginName};${n.ssPluginOpts}`)}`;
+      }
+      return `${uri}#${name(n)}`;
     }
     case 'hysteria': {
       const scheme = n.hysteriaVersion === 1 ? 'hysteria' : 'hysteria2';

@@ -1,5 +1,6 @@
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { RenderNode } from './common';
+import { classifySsPlugin, parsePluginOpts } from './common';
 
 /**
  * mihomo（Clash.Meta）下发模板——普通 YAML，Xboard 同款注入语义：
@@ -157,6 +158,7 @@ function buildProxy(n: RenderNode): Record<string, unknown> {
         port: n.port,
         cipher: n.ssCipher,
         password: n.password,
+        ...ssPluginFields(n),
       };
     case 'hysteria':
       if (n.hysteriaVersion === 1) {
@@ -209,6 +211,62 @@ function streamFields(n: RenderNode): Record<string, unknown> {
     return { network: 'h2', 'h2-opts': { path: n.h2Path, host: [n.h2Host] } };
   }
   return {};
+}
+
+/** SS 插件 → Clash plugin / plugin-opts（对齐 Xboard ClashMeta::buildShadowsocks 的字段映射） */
+function ssPluginFields(n: RenderNode): Record<string, unknown> {
+  if (!n.ssPlugin || !n.ssPluginOpts) return {};
+  const parsed = parsePluginOpts(n.ssPluginOpts);
+  const pick = (...keys: string[]): string | undefined => {
+    for (const k of keys) {
+      const v = parsed[k];
+      if (typeof v === 'string') return v;
+    }
+    return undefined;
+  };
+
+  switch (classifySsPlugin(n.ssPlugin)) {
+    case 'obfs':
+      return {
+        plugin: 'obfs',
+        'plugin-opts': {
+          mode: pick('obfs', 'mode') ?? 'http',
+          host: pick('obfs-host', 'host') ?? 'www.bing.com',
+        },
+      };
+    case 'v2ray-plugin':
+      return {
+        plugin: 'v2ray-plugin',
+        'plugin-opts': {
+          mode: pick('mode') ?? 'websocket',
+          tls: 'tls' in parsed || 'server' in parsed,
+          ...(pick('host') ? { host: pick('host') } : {}),
+          path: pick('path') ?? '/',
+          ...('mux' in parsed ? { mux: true } : {}),
+          ...(pick('host') ? { headers: { Host: pick('host') } } : {}),
+        },
+      };
+    case 'shadow-tls':
+      return {
+        plugin: 'shadow-tls',
+        'plugin-opts': {
+          ...(pick('host') ? { host: pick('host') } : {}),
+          ...(pick('password') ? { password: pick('password') } : {}),
+          version: parsed.version ? Number(parsed.version) : 2,
+        },
+      };
+    case 'restls':
+      return {
+        plugin: 'restls',
+        'plugin-opts': {
+          ...(pick('host') ? { host: pick('host') } : {}),
+          ...(pick('password') ? { password: pick('password') } : {}),
+          'restls-script': pick('restls-script') ?? '123',
+        },
+      };
+    default:
+      return { plugin: n.ssPlugin, 'plugin-opts': parsed };
+  }
 }
 
 /* ---------- 旧版占位符写法的简易 YAML 输出 ---------- */
