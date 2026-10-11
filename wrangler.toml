@@ -1,0 +1,13 @@
+name = "hakimi"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# 前端静态资源（构建产物直接放 web/，无需打包）
+[assets]
+directory = "./web"
+
+# D1 数据库：先执行 `wrangler d1 create hakimi`，把返回的 database_id 填到这里
+[[d1_databases]]
+binding = "DB"
+database_name = "hakimi"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
