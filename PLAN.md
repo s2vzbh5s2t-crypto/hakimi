@@ -270,7 +270,7 @@ hakimi/
 
 | 阶段 | 内容 | 验收 |
 |---|---|---|
-| **P1 · 中枢可用** | 节点/凭据 CRUD、订阅输出（clashmeta + general）、二维码、登录、通信密钥；`wrangler deploy` 上线 | 订阅丢进 Clash 能连（节点先手工起服务也行） |
+| **P1 · 中枢可用** | 节点/凭据 CRUD、订阅输出（clashmeta + general）、二维码、登录、通信密钥；经 Cloudflare 连 GitHub 自动部署上线 | 订阅丢进 Clash 能连（节点先手工起服务也行） |
 | **P2 · 后端闭环** | UniProxy + Tidalab 两族端点、认证（token/node_id/code）、ETag/304、上报弃收 | XrayR(NewV2board) 或 V2bX 跑通全流程；改面板配置 → 后端下一轮拉取生效 |
 
 P2 之后即为完整可用形态。以后想加监控/流量统计随时能加（上报端点已预留）。

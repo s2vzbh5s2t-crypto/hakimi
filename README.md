@@ -12,14 +12,12 @@
 
 ---
 
-## 快速开始
+## 快速开始（部署）
 
-项目**零构建**（前端是静态文件）、**零应用级密钥**（密码/密钥都存在 D1 里），三种部署方式任选：
-
-### 方式 A · Cloudflare 连 GitHub 自动部署（推荐）
-
-push 即部署，无需本地环境。仓库里的 `npm run deploy:ci` 会自动完成
-「查找/创建 D1 → 写入 database_id → 建表 → 部署」全流程。
+**唯一部署方式：Cloudflare 连接 GitHub 仓库自动部署**（Workers Builds）。
+项目零构建（前端是静态文件）、零应用级密钥（密码/密钥都存在 D1 里）——
+仓库里的 `npm run deploy:ci` 会在构建中自动完成
+「查找/创建 D1 → 写入 database_id → 建表 → 部署」，本地不需要装任何环境。
 
 1. 打开 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → **Create application** → **Import a repository** → 授权 GitHub 并选中本仓库
 2. **Worker 名字必须填 `hakimi`**
@@ -48,29 +46,6 @@ Cloudflare 执行你的构建时，构建过程自己也要「登录」你的账
 
 > 这个 token 是给 Cloudflare **构建环境**用的账号凭证，与面板里的「通信密钥」
 >（server_token，给节点后端用的）完全是两回事。随时可在 API Tokens 页吊销或改权限。
-
-### 方式 B · GitHub Actions
-
-仓库自带 [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml)（类型检查 → D1 准备/迁移 → 部署）。
-在仓库 **Settings → Secrets and variables → Actions** 配置两个 Secrets：
-
-| Secret | 值 |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | 自建 API Token，权限 `Account / Workers Scripts / D1 / Edit`（创建方法同上） |
-| `CLOUDFLARE_ACCOUNT_ID` | 账户 ID（Workers & Pages 首页右侧可见） |
-
-push 到 `main` 即自动部署。
-
-### 方式 C · 本地部署
-
-```bash
-npm install
-npx wrangler login                  # 首次需要
-npx wrangler d1 create hakimi       # 把返回的 database_id 填进 wrangler.toml
-npm run migrate                     # 建表（本地调试用 npm run migrate:local）
-npm run dev                         # 本地调试 http://127.0.0.1:8787
-npm run deploy                      # 上线
-```
 
 > 没有自己的域名也能用 `https://hakimi.<你的子域>.workers.dev`；
 > 有 Cloudflare zone 的话在 Workers 设置里绑自定义域即可。
@@ -159,13 +134,13 @@ v2board:
 npm run dev            # 本地开发（wrangler dev）
 npm run typecheck      # TypeScript 检查
 npm run migrate:local  # 本地 D1 建表
-npm run deploy:ci      # CI 全流程：D1 准备 + 迁移 + 部署
+npm run deploy:ci      # 部署全流程（Cloudflare 构建运行的就是它）：D1 准备 + 迁移 + 部署
 ```
 
 ```
 ├── wrangler.toml            # Workers 配置（D1 绑定、静态资源）
 ├── migrations/              # D1 SQL 迁移
-├── scripts/prepare-d1.mjs   # CI 用：自动创建/复用 D1、写 database_id、建表
+├── scripts/prepare-d1.mjs   # Cloudflare 构建用：自动创建/复用 D1、写 database_id、建表
 ├── src/
 │   ├── routes/              # admin（管理 API）/ serverapi（Xboard 兼容层）/ sub（订阅）
 │   ├── services/            # buildNodeConfig / 密码派生（照抄 Xboard 语义）
