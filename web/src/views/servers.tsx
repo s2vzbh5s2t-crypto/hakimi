@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, type Server } from '@/lib/api';
 import { ServerDialog } from '@/components/server-dialog';
 
@@ -28,6 +28,16 @@ export function ServersView() {
     try {
       await api(`/api/admin/servers/${s.id}`, { method: 'DELETE' });
       toast.success('已删除');
+      load();
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function duplicate(s: Server) {
+    try {
+      await api(`/api/admin/servers/${s.id}/duplicate`, { method: 'POST' });
+      toast.success('已复制为「' + s.name + ' 副本」');
       load();
     } catch (err) {
       toast.error((err as Error).message);
@@ -83,6 +93,15 @@ export function ServersView() {
                 <TableCell>{s.port}</TableCell>
                 <TableCell>{s.server_port}</TableCell>
                 <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="复制此节点"
+                    className="cursor-pointer"
+                    onClick={() => duplicate(s)}
+                  >
+                    <Copy />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"

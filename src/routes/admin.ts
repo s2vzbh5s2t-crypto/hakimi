@@ -5,6 +5,7 @@ import { VALID_TYPES, normalizeType } from '../types';
 import {
   createSession,
   deleteSession,
+  getServer,
   getSetting,
   getSettingInt,
   listServers,
@@ -150,6 +151,34 @@ adminApi.put('/api/admin/servers/:id', adminAuth, async (c) => {
   } catch (e) {
     return c.json({ message: String((e as Error).message ?? e) }, 422);
   }
+});
+
+// 复制节点（code 不复制——它有唯一约束，副本别名由用户自己填）
+adminApi.post('/api/admin/servers/:id/duplicate', adminAuth, async (c) => {
+  const src = await getServer(c.env.DB, Number(c.req.param('id')));
+  if (!src) return c.json({ message: '节点不存在' }, 404);
+  const now = Math.floor(Date.now() / 1000);
+  const res = await c.env.DB
+    .prepare(
+      `INSERT INTO servers (code, name, type, group_ids, tags, sort, host, port, server_port,
+                            protocol_settings, created_at, updated_at)
+       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      `${src.name} 副本`,
+      src.type,
+      src.group_ids,
+      src.tags,
+      src.sort,
+      src.host,
+      src.port,
+      src.server_port,
+      src.protocol_settings,
+      now,
+      now,
+    )
+    .run();
+  return c.json({ data: { id: res.meta.last_row_id } }, 201);
 });
 
 adminApi.delete('/api/admin/servers/:id', adminAuth, async (c) => {

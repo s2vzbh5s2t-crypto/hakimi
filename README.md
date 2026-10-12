@@ -51,6 +51,92 @@ Hakimi 是一个轻量级节点管理面板，充当你的**代理节点中枢�
 
 ---
 
+## 架构
+
+### 部署形态
+
+```
+GitHub 仓库（push 触发）
+   └─ Cloudflare Workers Builds 构建
+        ├─ ① prepare-d1.mjs     自动查找/创建 D1 → 写入 database_id → 执行迁移
+        ├─ ② vite build         前端构建（tsc 类型检查）
+        └─ ③ wrangler deploy    发布 Worker + 静态资源
+             ├─ Worker（Hono API）
+             └─ Static Assets（SPA）
+```
+
+零服务器、零运维，Cloudflare 免费档即可承载 30+ 节点。
+
+### 运行时路由（一个 Worker，四类入口）
+
+```
+请求 → Cloudflare Edge → Worker (Hono)
+  │
+  ├─ /api/admin/*              管理 API —— 面板 UI 用
+  │     鉴权：session cookie（PBKDF2 口令哈希 → sessions 表）
+  │
+  ├─ /api/v1|v2/server/*        后端兼容 API —— soga/XrayR/V2bX 用
+  │     鉴权：?token=通信密钥（settings 表）+ ?node_id=（支持 code 别名）
+  │
+  ├─ /s/{token}                 订阅 API —— 客户端用
+  │     鉴权：token 本身（subscriptions 表）
+  │     参数：?types / filter / flag
+  │
+  └─ 其余 → 静态资源 → SPA（React）
+```
+
+### 后端分层（src/）
+
+```
+routes/            HTTP 层 + 三种鉴权
+├─ admin.ts        节点/凭据/订阅 CRUD、复制、设置、轮换
+├─ serverapi.ts    UniProxy / Tidalab / v2 三族端点
+│                    拉取类实装（config/user）· 上报类收单即弃
+└─ sub.ts          订阅出口（UA 识别 → 渲染分发）
+         │
+services/          领域逻辑（语义照抄 Xboard）
+├─ node.ts         buildNodeConfig（逐协议挑字段）、getServer(code|id)
+└─ users.ts        密码派生（uuid → trojan/SS；SS2022 → serverKey:userKey）
+         │
+render/            订阅渲染（与 config 并列的第二套序列化）
+├─ clash.ts        mihomo YAML（Xboard 注入语义：自动注入节点/策略组/正则筛选）
+├─ singbox.ts      sing-box JSON
+├─ uri.ts          通用 URI/base64（SIP002、URL-safe）
+└─ index.ts        UA / flag → 格式分发
+         │
+db.ts · util.ts    D1 访问 / PBKDF2·SHA·ETag 工具
+```
+
+**分层原则**：`protocol_settings` JSON 是唯一存储格式，**两套出口各自序列化**——
+`services/node.ts` 扁平化给后端（Xboard `buildNodeConfig` 结构），`render/` 结构化给客户端。
+新增协议字段只改存储语义，两个出口独立适配、互不影响。
+
+### 数据模型（D1，5 张表）
+
+| 表 | 作用 |
+|---|---|
+| `servers` | 节点（`code` 别名 + `protocol_settings` JSON）—— 后端 NodeID 与订阅都指向它 |
+| `users` | 凭据（核心就一个 `uuid`，trojan/SS 密码全由它派生） |
+| `subscriptions` | 订阅（token + 绑定凭据 + 筛选条件） |
+| `sessions` | 管理会话 |
+| `settings` | 通信密钥 / 订阅路径 / 轮询间隔 / mihomo 下发模板 |
+
+### 三条数据流
+
+```
+① 配置流（面板 → 后端）   改配置写 D1 → 后端定时 GET config/user（ETag/304）→ 起核心
+② 订阅流（面板 → 客户端）  GET /s/token → UA 识别 → 模板注入渲染 → YAML/JSON/URI
+③ 上报流（后端 → 面板）   push/alive/status → 校验后收单即弃（仅为兼容，不落库）
+```
+
+### 架构红线
+
+1. **Xboard 契约为准** — 存储语义、config 结构、订阅注入规则全部照抄其源码，现成后端零改动对接
+2. **无常驻组件** — Workers 请求驱动，后端 pull 模式，面板不可达时线路照常运行
+3. **三权分离** — 管理密码 / 通信密钥 / 订阅 token 互不相通，泄露一个不塌全盘
+
+---
+
 ## 快速开始
 
 ### 部署（Cloudflare 连 GitHub 自动部署）
