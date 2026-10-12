@@ -1,6 +1,7 @@
 {
   "name": "hakimi",
   "version": "0.1.0",
+  "description": "单人代理节点中枢：Xboard 兼容后端 API + Clash/sing-box 订阅下发，托管 Cloudflare Workers",
   "private": true,
   "type": "module",
   "scripts": {
