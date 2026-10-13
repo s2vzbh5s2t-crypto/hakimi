@@ -27,7 +27,23 @@
 
 ## 用法
 
-先部署：
+### 先建 API Token
+
+部署时构建脚本要在你的 Cloudflare 账号里建 D1、传 Worker，需要一个带 D1 权限的 API token。Cloudflare 默认给构建用的那个没 D1 权限，所以得自己建一个，一次性的事：
+
+1. 打开 [API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+2. Create Token → 找 Custom Token → Get started（别用 "Edit Cloudflare Workers" 那个模板，它缺 D1）
+3. Permissions 加两条：
+   - `Account` / `Workers Scripts` / `Edit`
+   - `Account` / `D1` / `Edit`
+4. Account Resources 选 Include → 你的账户，Zone 不用管
+5. Continue to summary → Create Token → 完成
+
+不需要复制 token 字符串，它只在命令行、CI 这些场景才用得到。后面挂到构建上时，下拉框里直接选中它就行。
+
+token 想删就去 API Tokens 页 Delete，重新建一个再挂上。构建报 403 一般是权限没加对，去 API Tokens 页核对下是不是 Edit 而不是 Read。
+
+### 部署
 
 1. Fork 本仓库
 2. Cloudflare 控制台 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → Create application → Import a repository，选你 fork 的仓库
@@ -92,21 +108,6 @@ v2board:
 ```
 
 后端会自己定时来拉配置，面板上改完节点下一轮就生效。后端上报的流量、在线状态这些接口都有、能收，但不存，免得后端报错。
-
-## API Token 怎么建
-
-部署的时候构建脚本要在你的 Cloudflare 账号里建 D1、传 Worker，需要一个带 D1 权限的 API token。Cloudflare 默认给构建用的那个没 D1 权限，所以得自己建一个，一次性的事：
-
-1. 打开 [API Tokens](https://dash.cloudflare.com/profile/api-tokens)
-2. Create Token → 找 Custom Token → Get started（别用 "Edit Cloudflare Workers" 那个模板，它缺 D1）
-3. Permissions 加两条：
-   - `Account` / `Workers Scripts` / `Edit`
-   - `Account` / `D1` / `Edit`
-4. Account Resources 选 Include → 你的账户，Zone 不用管
-5. Continue to summary → Create Token → 把 token 复制下来，只显示这一次
-6. 回到 Workers & Pages → hakimi → Settings → Builds → API token，选中刚建的，保存
-
-token 找不回来了就删掉重建一个，重新挂上。构建报 403 一般是权限没加对，去 API Tokens 页核对下是不是 Edit 而不是 Read。
 
 ## 架构
 
