@@ -49,7 +49,7 @@ token 想删就去 API Tokens 页 Delete，重新建一个再挂上。构建报 
 2. Cloudflare 控制台 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → Create application → Import a repository，选你 fork 的仓库
 3. Worker 名字填 `hakimi`，不然后面构建会报错
 4. Deploy command 填 `npm run deploy:ci`，默认那个不行
-5. Settings → Builds → API token 换成自建的（步骤在下面）
+5. Settings → Builds → API token 换成自建的（步骤在上面）
 6. Save and Deploy
 
 之后每次 git push 就自动部署。访问 `https://hakimi.<你的子域>.workers.dev`，第一次进去设个管理密码，通信密钥会自动生成。
