@@ -96,12 +96,19 @@ function serverPayload(body: any) {
     type,
     group_ids: JSON.stringify(body.group_ids ?? []),
     tags: JSON.stringify(body.tags ?? []),
-    sort: Number(body.sort ?? 0),
+    // sort 缺省 = null，新建时自动排到末尾；更新时保持原值
+    sort: body.sort === undefined || body.sort === null || body.sort === '' ? null : Number(body.sort),
     host: String(body.host ?? ''),
     port: String(body.port ?? ''),
     server_port: Number(body.server_port ?? 0),
     protocol_settings: JSON.stringify(body.protocol_settings ?? {}),
   };
+}
+
+/** 新建时 sort 未指定 → 自动排到末尾（MAX(sort)+1） */
+async function nextSort(db: D1Database): Promise<number> {
+  const row = await db.prepare('SELECT COALESCE(MAX(sort), 0) + 1 AS next FROM servers').first<{ next: number }>();
+  return row?.next ?? 1;
 }
 
 adminApi.get('/api/admin/servers', adminAuth, async (c) => {
@@ -119,6 +126,7 @@ adminApi.get('/api/admin/servers', adminAuth, async (c) => {
 adminApi.post('/api/admin/servers', adminAuth, async (c) => {
   try {
     const p = serverPayload(await c.req.json());
+    const sort = p.sort !== null && !Number.isNaN(p.sort) ? p.sort : await nextSort(c.env.DB);
     const now = Math.floor(Date.now() / 1000);
     const res = await c.env.DB
       .prepare(
@@ -126,10 +134,10 @@ adminApi.post('/api/admin/servers', adminAuth, async (c) => {
                               protocol_settings, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(p.code, p.name, p.type, p.group_ids, p.tags, p.sort, p.host, p.port, p.server_port,
+      .bind(p.code, p.name, p.type, p.group_ids, p.tags, sort, p.host, p.port, p.server_port,
         p.protocol_settings, now, now)
       .run();
-    return c.json({ data: { id: res.meta.last_row_id } }, 201);
+    return c.json({ data: { id: res.meta.last_row_id, sort } }, 201);
   } catch (e) {
     return c.json({ message: String((e as Error).message ?? e) }, 422);
   }
@@ -138,14 +146,18 @@ adminApi.post('/api/admin/servers', adminAuth, async (c) => {
 adminApi.put('/api/admin/servers/:id', adminAuth, async (c) => {
   try {
     const p = serverPayload(await c.req.json());
+    const id = Number(c.req.param('id'));
     const now = Math.floor(Date.now() / 1000);
+    // sort 未传 → 保持原值
     await c.env.DB
       .prepare(
-        `UPDATE servers SET code=?, name=?, type=?, group_ids=?, tags=?, sort=?, host=?, port=?,
+        `UPDATE servers SET code=?, name=?, type=?, group_ids=?, tags=?,
+                            sort=COALESCE(?, (SELECT sort FROM servers WHERE id = ?)),
+                            host=?, port=?,
                             server_port=?, protocol_settings=?, updated_at=? WHERE id=?`,
       )
-      .bind(p.code, p.name, p.type, p.group_ids, p.tags, p.sort, p.host, p.port, p.server_port,
-        p.protocol_settings, now, Number(c.req.param('id')))
+      .bind(p.code, p.name, p.type, p.group_ids, p.tags, p.sort, id, p.host, p.port, p.server_port,
+        p.protocol_settings, now, id)
       .run();
     return c.json({ data: true });
   } catch (e) {

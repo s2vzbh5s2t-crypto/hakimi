@@ -95,7 +95,7 @@ export function ServerDialog({
   const [host, setHost] = useState(editing?.host ?? '');
   const [port, setPort] = useState(editing?.port ?? '');
   const [serverPort, setServerPort] = useState(editing ? String(editing.server_port) : '');
-  const [sort, setSort] = useState(editing ? String(editing.sort) : '0');
+  const [sort, setSort] = useState(editing ? String(editing.sort) : '');
   const [tags, setTags] = useState((editing?.tags ?? []).join(','));
   const [proto, setProto] = useState<ProtoForm>(() =>
     editing ? formFromSettings(editing.protocol_settings) : defaultProtoForm(),
@@ -115,7 +115,7 @@ export function ServerDialog({
         host,
         port,
         server_port: Number(serverPort || 0),
-        sort: Number(sort || 0),
+        sort: sort === '' ? undefined : Number(sort),
         tags: tags.split(/[,，]+/).map((t) => t.trim()).filter(Boolean),
         protocol_settings: settingsFromForm(type, proto, editing?.protocol_settings ?? {}),
       };
@@ -163,7 +163,7 @@ export function ServerDialog({
             <Text value={serverPort} onChange={setServerPort} placeholder="8443" type="number" />
           </Field>
           <Field label="排序">
-            <Text value={sort} onChange={setSort} type="number" />
+            <Text value={sort} onChange={setSort} type="number" placeholder="留空自动排到末尾" />
           </Field>
           <Field label="标签（逗号分隔）">
             <Text value={tags} onChange={setTags} placeholder="香港,IEPL" />
