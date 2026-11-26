@@ -44,19 +44,13 @@ export async function deleteSession(db: D1Database, tokenHash: string): Promise<
 /* ---------- servers ---------- */
 
 export async function listServers(db: D1Database): Promise<ServerRow[]> {
-  const res = await db.prepare('SELECT * FROM servers ORDER BY sort ASC, id ASC').all<ServerRow>();
+  const res = await db.prepare('SELECT * FROM servers ORDER BY id ASC').all<ServerRow>();
   return res.results ?? [];
 }
 
-/** 后端拉取的节点查找：code 优先于 id 匹配 */
-export async function getServer(db: D1Database, idOrCode: string | number): Promise<ServerRow | null> {
-  return db
-    .prepare(
-      `SELECT * FROM servers WHERE code = ? OR id = ?
-       ORDER BY CASE WHEN code = ? THEN 0 ELSE 1 END LIMIT 1`,
-    )
-    .bind(String(idOrCode), Number(idOrCode) || -1, String(idOrCode))
-    .first<ServerRow>();
+/** 后端拉取的节点查找（node_id = 数字 id） */
+export async function getServer(db: D1Database, id: string | number): Promise<ServerRow | null> {
+  return db.prepare('SELECT * FROM servers WHERE id = ?').bind(Number(id) || -1).first<ServerRow>();
 }
 
 /* ---------- users ---------- */

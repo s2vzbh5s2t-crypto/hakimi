@@ -54,7 +54,7 @@
 
 | 概念 | 对应生态 | 说明 |
 |---|---|---|
-| **Server（节点）** | `nodeID` | 查找规则（`ServerService::getServer`）：`code` **或** `id` 匹配，code 优先 → 节点可以有字符串别名，后端 `NodeID` 填什么都行 |
+| **Server（节点）** | `nodeID` | 查找规则：数字 `id` 匹配（本项目已去掉 Xboard 的 `code` 别名字段），后端 `NodeID` 填面板节点 id |
 | **User（用户）** | `/user` 返回的凭据 | **全部协议密码都派生自 `user.uuid` 这一个字段**：vless/vmess 直接用 uuid；trojan 密码 = uuid；SS secret = uuid（SS2022 时 = `serverKey:userKey`，见 §6.3）。单用户 = 1~N 行凭据（按订阅/设备各一份） |
 | **Subscription（订阅）** | `/s/{token}` | 节点集 + 指定凭据的导出视图，token 可轮换 |
 | **分组** | `servers.group_ids` × `users.group_id` | Xboard 用权限组筛"哪些用户能用哪些节点"；单人版可简化为"订阅的节点筛选"用（`?filter=`） |
@@ -65,7 +65,7 @@
 
 ### M1 节点管理
 - 节点 CRUD；类型（`Server::VALID_TYPES` + `TYPE_ALIASES` 归一化）：`vless` / `vmess` / `trojan` / `shadowsocks` / `hysteria` / `tuic`（可选 `anytls` / `socks` / `naive` / `http`）
-- 节点字段对齐 Xboard：`code`（可读别名）、`name`、`host`（连接地址）、`port`（客户端连接端口，支持 `1000-2000` 动态范围）、`server_port`（服务端监听端口）、`tags`、`sort`、`protocol_settings`（JSON）
+- 节点字段对齐 Xboard（精简）：`name`、`host`（连接地址）、`port`（客户端连接端口，支持 `1000-2000` 动态范围）、`server_port`（服务端监听端口）、`tags`、`protocol_settings`（JSON）。已去掉 `code`（别名）与 `sort`（排序），节点顺序 = 创建顺序（`id ASC`）
 - `protocol_settings` 按类型表单化：`network/network_settings`（tcp/ws/grpc/h2）、`tls`(0/1/2：无/TLS/Reality)、`tls_settings`、`reality_settings`、`flow`、`multiplex`、`cipher/plugin/plugin_opts`（SS）、`bandwidth/obfs`（hysteria）、`congestion_control`（tuic）等
 
 ### M2 用户与凭据（单人）
@@ -89,9 +89,9 @@
 ## 5. 数据模型（Cloudflare D1）
 
 ```sql
-servers          (id, code,                       -- code: 字符串别名，后端 NodeID 可填 code 或 id
+servers          (id,                       -- 后端 NodeID 填这个数字 id
                   name, type,                     -- vless|vmess|trojan|shadowsocks|hysteria|tuic|...
-                  group_ids, tags, sort,
+                  group_ids, tags,
                   host, port, server_port,        -- port 支持 "1000-2000" 动态范围
                   protocol_settings,              -- JSON，字段结构照抄 Xboard（见 §6.3 config）
                   created_at, updated_at)
@@ -137,7 +137,7 @@ GET /s/{token}[?types=&filter=&flag=]     -- UA 自动识别，flag 强制指定
 | ~~Deepbwork~~ | ~~`/api/v1/server/Deepbwork/*`~~ | **现行 Xboard 已移除**（`ServerRoute.php` 里 `use DeepbworkController` 是死引用，类不存在）。XrayR 的 `PanelType: V2board` 本就连不上现行 Xboard；确有老后端需要再补 |
 
 **认证**：
-- v1（`Middleware/Server.php`）：query `token` == `settings.server_token` + `node_id` 必填 + 可选 `node_type`（`TYPE_ALIASES` 归一化，`v2node` 特例视为无）。节点按 `code` 优先、`id` 其次查找，找不到 404
+- v1（`Middleware/Server.php`）：query `token` == `settings.server_token` + `node_id` 必填 + 可选 `node_type`（`TYPE_ALIASES` 归一化，`v2node` 特例视为无）。本项目按数字 `id` 查找（Xboard 原版是 `code` 优先、`id` 其次），找不到 404
 - v2（`Middleware/ServerV2.php`）：`machine_id`+`token`（机器模式）或 `token`+`node_id`；`handshake` 时 `node_id` 可空
 
 **config（GET，实装）**——`ServerService::buildNodeConfig` 的响应，公共字段 + 按类型补充：
@@ -193,7 +193,7 @@ Nodes:
     ApiConfig:
       ApiHost: "https://panel.example.com"
       ApiKey: "面板设置里的通信密钥"     # → query token
-      NodeID: 1                         # 填面板节点的 id 或 code
+      NodeID: 1                         # 填面板节点的 id
       NodeType: "V2ray"                 # V2ray|Trojan|Shadowsocks（VLESS 走 EnableVless: true）
 ```
 
@@ -257,7 +257,7 @@ hakimi/
 │   │   └── serverapi/      # 后端 API 兼容层
 │   │       ├── uniproxy/   #   UniProxy 族（config/user 实装，上报弃收）
 │   │       └── tidalab/    #   Tidalab 族（trojan/ss）
-│   ├── services/           # buildNodeConfig / getAvailableUsers / getServer(code|id)
+│   ├── services/           # buildNodeConfig / getAvailableUsers / getServer(id)
 │   ├── render/             # 订阅渲染器（照抄 app/Protocols 的字段映射）
 │   └── db/                 # D1 访问封装
 ├── web/                    # React 前端（构建产物由 Workers Static Assets 托管）
@@ -271,7 +271,7 @@ hakimi/
 | 阶段 | 内容 | 验收 |
 |---|---|---|
 | **P1 · 中枢可用** | 节点/凭据 CRUD、订阅输出（clashmeta + general）、二维码、登录、通信密钥；经 Cloudflare 连 GitHub 自动部署上线 | 订阅丢进 Clash 能连（节点先手工起服务也行） |
-| **P2 · 后端闭环** | UniProxy + Tidalab 两族端点、认证（token/node_id/code）、ETag/304、上报弃收 | XrayR(NewV2board) 或 V2bX 跑通全流程；改面板配置 → 后端下一轮拉取生效 |
+| **P2 · 后端闭环** | UniProxy + Tidalab 两族端点、认证（token/node_id）、ETag/304、上报弃收 | XrayR(NewV2board) 或 V2bX 跑通全流程；改面板配置 → 后端下一轮拉取生效 |
 
 P2 之后即为完整可用形态。以后想加监控/流量统计随时能加（上报端点已预留）。
 

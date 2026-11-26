@@ -27,12 +27,10 @@ export type ProtocolSettings = {
 
 export type ServerRow = {
   id: number;
-  code: string | null;
   name: string;
   type: string; // vless | vmess | trojan | shadowsocks | hysteria | tuic
   group_ids: string;
   tags: string;
-  sort: number;
   host: string;
   port: string;
   server_port: number;

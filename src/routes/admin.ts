@@ -91,24 +91,15 @@ function serverPayload(body: any) {
     throw new Error('不支持的节点类型');
   }
   return {
-    code: body.code ? String(body.code) : null,
     name: String(body.name ?? '').trim() || 'unnamed',
     type,
     group_ids: JSON.stringify(body.group_ids ?? []),
     tags: JSON.stringify(body.tags ?? []),
-    // sort 缺省 = null，新建时自动排到末尾；更新时保持原值
-    sort: body.sort === undefined || body.sort === null || body.sort === '' ? null : Number(body.sort),
     host: String(body.host ?? ''),
     port: String(body.port ?? ''),
     server_port: Number(body.server_port ?? 0),
     protocol_settings: JSON.stringify(body.protocol_settings ?? {}),
   };
-}
-
-/** 新建时 sort 未指定 → 自动排到末尾（MAX(sort)+1） */
-async function nextSort(db: D1Database): Promise<number> {
-  const row = await db.prepare('SELECT COALESCE(MAX(sort), 0) + 1 AS next FROM servers').first<{ next: number }>();
-  return row?.next ?? 1;
 }
 
 adminApi.get('/api/admin/servers', adminAuth, async (c) => {
@@ -126,18 +117,17 @@ adminApi.get('/api/admin/servers', adminAuth, async (c) => {
 adminApi.post('/api/admin/servers', adminAuth, async (c) => {
   try {
     const p = serverPayload(await c.req.json());
-    const sort = p.sort !== null && !Number.isNaN(p.sort) ? p.sort : await nextSort(c.env.DB);
     const now = Math.floor(Date.now() / 1000);
     const res = await c.env.DB
       .prepare(
-        `INSERT INTO servers (code, name, type, group_ids, tags, sort, host, port, server_port,
+        `INSERT INTO servers (name, type, group_ids, tags, host, port, server_port,
                               protocol_settings, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(p.code, p.name, p.type, p.group_ids, p.tags, sort, p.host, p.port, p.server_port,
+      .bind(p.name, p.type, p.group_ids, p.tags, p.host, p.port, p.server_port,
         p.protocol_settings, now, now)
       .run();
-    return c.json({ data: { id: res.meta.last_row_id, sort } }, 201);
+    return c.json({ data: { id: res.meta.last_row_id } }, 201);
   } catch (e) {
     return c.json({ message: String((e as Error).message ?? e) }, 422);
   }
@@ -148,16 +138,14 @@ adminApi.put('/api/admin/servers/:id', adminAuth, async (c) => {
     const p = serverPayload(await c.req.json());
     const id = Number(c.req.param('id'));
     const now = Math.floor(Date.now() / 1000);
-    // sort 未传 → 保持原值
     await c.env.DB
       .prepare(
-        `UPDATE servers SET code=?, name=?, type=?, group_ids=?, tags=?,
-                            sort=COALESCE(?, (SELECT sort FROM servers WHERE id = ?)),
+        `UPDATE servers SET name=?, type=?, group_ids=?, tags=?,
                             host=?, port=?,
                             server_port=?, protocol_settings=?, updated_at=? WHERE id=?`,
       )
-      .bind(p.code, p.name, p.type, p.group_ids, p.tags, p.sort, id, p.host, p.port, p.server_port,
-        p.protocol_settings, now, id)
+      .bind(p.name, p.type, p.group_ids, p.tags, p.host, p.port,
+        p.server_port, p.protocol_settings, now, id)
       .run();
     return c.json({ data: true });
   } catch (e) {
@@ -165,23 +153,22 @@ adminApi.put('/api/admin/servers/:id', adminAuth, async (c) => {
   }
 });
 
-// 复制节点（code 不复制——它有唯一约束，副本别名由用户自己填）
+// 复制节点
 adminApi.post('/api/admin/servers/:id/duplicate', adminAuth, async (c) => {
   const src = await getServer(c.env.DB, Number(c.req.param('id')));
   if (!src) return c.json({ message: '节点不存在' }, 404);
   const now = Math.floor(Date.now() / 1000);
   const res = await c.env.DB
     .prepare(
-      `INSERT INTO servers (code, name, type, group_ids, tags, sort, host, port, server_port,
+      `INSERT INTO servers (name, type, group_ids, tags, host, port, server_port,
                             protocol_settings, created_at, updated_at)
-       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       `${src.name} 副本`,
       src.type,
       src.group_ids,
       src.tags,
-      src.sort,
       src.host,
       src.port,
       src.server_port,

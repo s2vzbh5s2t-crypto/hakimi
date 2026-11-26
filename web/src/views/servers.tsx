@@ -64,20 +64,18 @@ export function ServersView() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">ID</TableHead>
-              <TableHead>Code</TableHead>
               <TableHead>名称</TableHead>
               <TableHead>类型</TableHead>
               <TableHead>地址</TableHead>
               <TableHead>端口</TableHead>
               <TableHead>服务端口</TableHead>
-              <TableHead>排序</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {servers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   暂无节点，点右上角新建
                 </TableCell>
               </TableRow>
@@ -85,7 +83,6 @@ export function ServersView() {
             {servers.map((s) => (
               <TableRow key={s.id}>
                 <TableCell>{s.id}</TableCell>
-                <TableCell className="font-mono text-xs">{s.code ?? '—'}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell>
                   <Badge variant="secondary">{s.type}</Badge>
@@ -93,7 +90,6 @@ export function ServersView() {
                 <TableCell>{s.host}</TableCell>
                 <TableCell>{s.port}</TableCell>
                 <TableCell>{s.server_port}</TableCell>
-                <TableCell className="text-muted-foreground">{s.sort}</TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="ghost"

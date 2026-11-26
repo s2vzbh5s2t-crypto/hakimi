@@ -2,12 +2,10 @@
 
 export type Server = {
   id: number;
-  code: string | null;
   name: string;
   type: string;
   group_ids: string[];
   tags: string[];
-  sort: number;
   host: string;
   port: string;
   server_port: number;
