@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { AppEnv, ServerRow } from '../types';
 import { getServer, getAvailableUsers, getSetting, getSettingInt } from '../db';
 import { buildNodeConfig, parseSettings } from '../services/node';
-import { deriveUserSecret, toBackendUser } from '../services/users';
+import { toBackendUser } from '../services/users';
 import { sha1Hex } from '../util';
 
 /**
@@ -77,17 +77,12 @@ serverApi.get('/api/v1/server/UniProxy/config', authV1, async (c) => {
   return etagRespond(c, config);
 });
 
-// GET user —— 凭据表（SS 节点把派生后的密码放进 uuid 字段，见 services/users.ts）
+// GET user —— 与 Xboard UniProxyController::user 一致：下发原始 uuid。
+// SS2022 的多用户匹配由后端自己完成（base64(substr(uuid,0,size)) 作为 uPSK），
+// 这里若下发派生后的 `iPSK:uPSK`，heki 会拿它当 uuid 取前 N 字节，导致匹配不到用户。
 serverApi.get('/api/v1/server/UniProxy/user', authV1, async (c) => {
-  const node = c.get('node')!;
   const users = await getAvailableUsers(c.env.DB);
-  const out = [];
-  for (const u of users) {
-    const item = toBackendUser(u);
-    if (node.type === 'shadowsocks') item.uuid = await deriveUserSecret(node, u);
-    out.push(item);
-  }
-  return etagRespond(c, { users: out });
+  return etagRespond(c, { users: users.map((u) => toBackendUser(u)) });
 });
 
 // POST push —— 流量上报，body: [[uid, bytes], ...]，弃收
@@ -160,7 +155,7 @@ serverApi.get('/api/v1/server/ShadowsocksTidalab/user', authV1, async (c) => {
       id: u.id,
       port: Number(node.server_port),
       cipher: ps.cipher ?? null,
-      secret: await deriveUserSecret(node, u),
+      secret: u.uuid, // 对齐 Xboard：ShadowsocksTidalabController 下发原始 uuid
     });
   }
   return etagRespond(c, { data });
@@ -199,15 +194,8 @@ serverApi.get('/api/v2/server/config', authV2, async (c) => {
 });
 
 serverApi.get('/api/v2/server/user', authV2, async (c) => {
-  const node = c.get('node')!;
   const users = await getAvailableUsers(c.env.DB);
-  const out = [];
-  for (const u of users) {
-    const item = toBackendUser(u);
-    if (node.type === 'shadowsocks') item.uuid = await deriveUserSecret(node, u);
-    out.push(item);
-  }
-  return etagRespond(c, { users: out });
+  return etagRespond(c, { users: users.map((u) => toBackendUser(u)) });
 });
 
 serverApi.post('/api/v2/server/push', authV2, async (c) => {
